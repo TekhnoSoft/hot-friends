@@ -1,0 +1,1030 @@
+.profilepage-container {
+  max-width: 600px;
+  margin: 0 auto;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  padding-bottom: 80px; /* Espaço para bottom nav */
+}
+
+/* Header */
+.profilepage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.profilepage-back-btn,
+.profilepage-menu-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.profilepage-back-btn:hover,
+.profilepage-menu-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.profilepage-header-info {
+  flex: 1;
+  text-align: center;
+}
+
+.profilepage-header-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+}
+
+.profilepage-header-posts {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Cover */
+.profilepage-cover {
+  height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.profilepage-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Profile Info */
+.profilepage-info {
+  padding: 0 20px;
+  position: relative;
+}
+
+.profilepage-avatar-section {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  margin-top: -60px;
+}
+
+.profilepage-avatar-container {
+  position: relative;
+}
+
+.profilepage-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--bg-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profilepage-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.profilepage-actions-left {
+  display: flex;
+}
+
+.profilepage-actions-right {
+  display: flex;
+  gap: 8px;
+}
+
+.profilepage-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+}
+
+.profilepage-action-btn.profilepage-follow {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.profilepage-action-btn.profilepage-follow:hover {
+  background: var(--primary-hover);
+}
+
+.profilepage-action-btn.profilepage-following {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.profilepage-action-btn.profilepage-following:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.profilepage-action-btn.profilepage-secondary:hover {
+  background: var(--bg-secondary);
+}
+
+.profilepage-action-btn.profilepage-icon-only {
+  padding: 8px;
+  min-width: 36px;
+}
+
+.profilepage-action-btn.profilepage-active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* Botão de Mimo */
+.profilepage-action-btn.profilepage-gift {
+  background: linear-gradient(135deg, var(--accent-color), #f97316);
+  color: white;
+  border-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.profilepage-action-btn.profilepage-gift:hover {
+  background: linear-gradient(135deg, var(--accent-hover), #ea580c);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+}
+
+.profilepage-action-btn.profilepage-gift::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.profilepage-action-btn.profilepage-gift:hover::before {
+  left: 100%;
+}
+
+.profilepage-details {
+  margin-bottom: 24px;
+}
+
+.profilepage-name-section {
+  margin-bottom: 12px;
+}
+
+.profilepage-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profilepage-verification {
+  color: var(--primary-color);
+  font-size: 18px;
+}
+
+.profilepage-username {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.profilepage-bio {
+  margin-bottom: 16px;
+}
+
+.profilepage-bio p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.profilepage-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.profilepage-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.profilepage-meta-item a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.profilepage-meta-item a:hover {
+  text-decoration: underline;
+}
+
+.profilepage-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.profilepage-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.profilepage-stat-number {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.profilepage-stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Subscriptions */
+.profilepage-subscriptions {
+  padding: 24px 20px;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.profilepage-subscriptions-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+}
+
+.profilepage-subscriptions-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.profilepage-subscription-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 140px;
+  text-align: center;
+  position: relative;
+}
+
+.profilepage-subscription-info {
+  margin-bottom: 8px;
+}
+
+.profilepage-subscription-duration {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.profilepage-subscription-discount {
+  background: linear-gradient(135deg, var(--accent-color), #f97316);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.profilepage-subscription-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.profilepage-subscription-btn {
+  width: 100%;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--accent-color), #f97316);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profilepage-subscription-btn:hover {
+  background: linear-gradient(135deg, var(--accent-hover), #ea580c);
+  transform: translateY(-1px);
+}
+
+/* Tabs */
+.profilepage-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  position: sticky;
+  top: 65px;
+  z-index: 99;
+}
+
+.profilepage-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.profilepage-tab:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.profilepage-tab.profilepage-tab-active {
+  color: var(--primary-color);
+}
+
+.profilepage-tab.profilepage-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary-color);
+}
+
+.profilepage-tab-count {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.profilepage-tab.profilepage-tab-active .profilepage-tab-count {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Content */
+.profilepage-content {
+  min-height: 400px;
+}
+
+.profilepage-posts {
+  padding: 0 20px;
+  margin-top: 15px;
+}
+
+.profilepage-media-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 20px;
+}
+
+.profilepage-media-item {
+  aspect-ratio: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.profilepage-media-image,
+.profilepage-media-video img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.profilepage-media-item:hover .profilepage-media-image,
+.profilepage-media-item:hover .profilepage-media-video img {
+  transform: scale(1.05);
+}
+
+.profilepage-media-video-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profilepage-liked {
+  padding: 60px 20px;
+}
+
+.profilepage-empty-state {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.profilepage-empty-state svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.profilepage-empty-state h3 {
+  font-size: 18px;
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.profilepage-empty-state p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Dropdown Menu */
+.profilepage-dropdown-menu {
+  width: 200px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: profilepage-slideDown 0.2s ease-out;
+}
+
+@keyframes profilepage-slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.profilepage-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+}
+
+.profilepage-menu-item:hover {
+  background: var(--bg-secondary);
+}
+
+.profilepage-menu-item-danger {
+  color: var(--accent-color);
+}
+
+.profilepage-menu-item-danger:hover {
+  background: rgba(236, 72, 153, 0.1);
+}
+
+.profilepage-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+/* Bottom Tab Navigation */
+.profilepage-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.profilepage-bottom-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  min-width: 60px;
+}
+
+.profilepage-bottom-tab:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.profilepage-bottom-tab.profilepage-bottom-tab-active {
+  color: var(--primary-color);
+}
+
+.profilepage-bottom-tab span {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .profilepage-container {
+    max-width: 100%;
+  }
+  
+  .profilepage-header {
+    padding: 12px 16px;
+  }
+  
+  .profilepage-info {
+    padding: 0 16px;
+  }
+  
+  .profilepage-avatar {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .profilepage-avatar-section {
+    margin-top: -50px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .profilepage-actions {
+    align-self: stretch;
+    margin-bottom: 16px;
+  }
+  
+  .profilepage-actions-left {
+    flex: 1;
+  }
+  
+  .profilepage-actions-right {
+    gap: 6px;
+  }
+  
+  .profilepage-action-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .profilepage-action-btn.profilepage-icon-only {
+    padding: 6px;
+  }
+  
+  /* Esconder texto dos botões no mobile */
+  .profilepage-btn-text {
+    display: none;
+  }
+  
+  .profilepage-action-btn.profilepage-follow .profilepage-btn-text,
+  .profilepage-action-btn.profilepage-following .profilepage-btn-text {
+    display: inline;
+  }
+  
+  .profilepage-stats {
+    gap: 16px;
+  }
+  
+  .profilepage-subscriptions-list {
+    gap: 8px;
+  }
+  
+  .profilepage-subscription-card {
+    min-width: 120px;
+    padding: 12px;
+  }
+  
+  .profilepage-posts {
+    padding: 0 12px;
+  }
+  
+  .profilepage-media-grid {
+    padding: 16px;
+    gap: 1px;
+  }
+  
+  .profilepage-tab {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+  
+  .profilepage-tab span:not(.profilepage-tab-count) {
+    display: none;
+  }
+  
+  .profilepage-dropdown-menu {
+    width: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .profilepage-cover {
+    height: 150px;
+  }
+  
+  .profilepage-avatar {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .profilepage-avatar-section {
+    margin-top: -40px;
+  }
+  
+  .profilepage-actions-right {
+    gap: 4px;
+  }
+  
+  .profilepage-action-btn {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  
+  .profilepage-action-btn.profilepage-icon-only {
+    padding: 6px;
+    min-width: 32px;
+  }
+  
+  .profilepage-subscriptions-list {
+    flex-direction: column;
+  }
+  
+  .profilepage-subscription-card {
+    min-width: auto;
+  }
+}
+
+/* Desktop - Esconder bottom nav */
+@media (min-width: 769px) {
+  .profilepage-bottom-nav {
+    display: none;
+  }
+  
+  .profilepage-container {
+    padding-bottom: 0;
+  }
+  
+  .profilepage-btn-text {
+    display: inline !important;
+  }
+}
+
+/* Acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+  .profilepage-dropdown-menu {
+    animation: none;
+  }
+  
+  .profilepage-action-btn.profilepage-gift::before {
+    display: none;
+  }
+  
+  .profilepage-action-btn.profilepage-gift:hover {
+    transform: none;
+  }
+}
+
+.profilepage-action-btn:focus,
+.profilepage-subscription-btn:focus,
+.profilepage-tab:focus,
+.profilepage-bottom-tab:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.profilepage-menu-item:focus {
+  background: var(--bg-secondary);
+  outline: none;
+}
+
+/* Scrollbar customizada */
+.profilepage-subscriptions-list::-webkit-scrollbar {
+  height: 4px;
+}
+
+.profilepage-subscriptions-list::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.profilepage-subscriptions-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.profilepage-subscriptions-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ... CSS anterior mantido ... */
+
+/* Media Filters */
+.profilepage-media-filters {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  position: sticky;
+  top: 129px; /* Header + tabs */
+  z-index: 98;
+}
+
+.profilepage-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.profilepage-filter-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--primary-color);
+}
+
+.profilepage-filter-btn.profilepage-filter-active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.profilepage-filter-btn.profilepage-filter-active:hover {
+  background: var(--primary-hover);
+}
+
+/* Media Grid Melhorado */
+.profilepage-media-photo,
+.profilepage-media-video {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.profilepage-media-paid-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.profilepage-media-video-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+/* Hover effects para media items */
+.profilepage-media-item:hover .profilepage-media-paid-badge {
+  background: var(--primary-color);
+}
+
+.profilepage-media-item:hover .profilepage-media-video-overlay {
+  background: var(--primary-color);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Mobile adjustments para filters */
+@media (max-width: 768px) {
+  .profilepage-media-filters {
+    padding: 12px 16px;
+    gap: 6px;
+    top: 117px; /* Ajustar para mobile */
+  }
+  
+  .profilepage-filter-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  
+  .profilepage-filter-btn span {
+    font-size: 11px;
+  }
+  
+  .profilepage-media-paid-badge {
+    width: 24px;
+    height: 24px;
+    top: 6px;
+    right: 6px;
+  }
+  
+  .profilepage-media-paid-badge svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .profilepage-media-video-overlay {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .profilepage-media-video-overlay svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .profilepage-media-filters {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+  
+  .profilepage-filter-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .profilepage-filter-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Scrollbar para filters */
+.profilepage-media-filters::-webkit-scrollbar {
+  height: 4px;
+}
+
+.profilepage-media-filters::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.profilepage-media-filters::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.profilepage-media-filters::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Estados de loading para filtros */
+.profilepage-filter-btn.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Animações */
+.profilepage-media-item {
+  transition: transform 0.2s ease;
+}
+
+.profilepage-media-item:hover {
+  transform: scale(1.02);
+}
+
+/* Focus states */
+.profilepage-filter-btn:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Empty state para filtros */
+.profilepage-media-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.profilepage-media-empty svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.profilepage-media-empty h3 {
+  font-size: 18px;
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.profilepage-media-empty p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+  .profilepage-filter-btn,
+  .profilepage-media-item,
+  .profilepage-media-video-overlay {
+    transition: none;
+  }
+  
+  .profilepage-media-item:hover {
+    transform: none;
+  }
+  
+  .profilepage-media-item:hover .profilepage-media-video-overlay {
+    transform: translate(-50%, -50%);
+  }
+}

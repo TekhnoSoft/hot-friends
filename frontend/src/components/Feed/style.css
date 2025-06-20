@@ -1,0 +1,31 @@
+.feed {
+  flex: 1;
+  max-width: 1200px;
+}
+
+.feed-empty {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-2xl);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.empty-content h3 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.empty-content p {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .feed {
+    max-width: 100%;
+  }
+}

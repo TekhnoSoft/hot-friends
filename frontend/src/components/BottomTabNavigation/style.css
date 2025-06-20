@@ -1,0 +1,368 @@
+.bottom-tab-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  /* Bordas arredondadas nas laterais */
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  /* Remover bordas laterais para melhor visual */
+  border-left: none;
+  border-right: none;
+}
+
+.tab-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: var(--spacing-md) var(--spacing-lg);
+  max-width: 100%;
+  margin: 0 auto;
+  position: relative;
+  /* Adicionar padding extra para acomodar o botão elevado */
+  padding-top: var(--spacing-lg);
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-xs);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-muted);
+  min-width: 60px;
+  border-radius: var(--border-radius-sm);
+  position: relative;
+}
+
+.tab-item:hover:not(.special) {
+  background: var(--bg-secondary);
+  transform: translateY(-2px);
+}
+
+.tab-item.active:not(.special) {
+  color: var(--primary-color);
+}
+
+.tab-item.active:not(.special) .tab-icon {
+  transform: scale(1.1);
+}
+
+/* Botão especial para criar post - Completamente redesenhado */
+.tab-item.special {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  color: white;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  margin-top: -24px; /* Elevação maior */
+  box-shadow: 
+    0 8px 25px rgba(99, 102, 241, 0.4),
+    0 4px 12px rgba(236, 72, 153, 0.3),
+    0 0 0 4px var(--bg-primary); /* Borda branca ao redor */
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efeito de brilho no botão especial */
+.tab-item.special::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  border-radius: 50%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.tab-item.special:hover {
+  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--accent-hover) 100%);
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 
+    0 12px 35px rgba(99, 102, 241, 0.5),
+    0 6px 15px rgba(236, 72, 153, 0.4),
+    0 0 0 4px var(--bg-primary),
+    0 0 0 6px rgba(99, 102, 241, 0.2); /* Glow effect */
+}
+
+.tab-item.special:hover::before {
+  opacity: 1;
+}
+
+.tab-item.special:active {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.tab-item.special .tab-label {
+  position: absolute;
+  bottom: -28px;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.tab-item.special .tab-icon {
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* Animação de pulso para o botão especial */
+.tab-item.special::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  z-index: -1;
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+.tab-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-icon {
+  transition: all var(--transition-fast);
+}
+
+.notification-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: var(--accent-color);
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+  animation: pulse-notification 2s infinite;
+  box-shadow: 0 2px 4px rgba(236, 72, 153, 0.3);
+}
+
+@keyframes pulse-notification {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.tab-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+}
+
+/* Animação de entrada melhorada */
+@keyframes slideUpBounce {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.bottom-tab-navigation {
+  animation: slideUpBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Efeito de ondulação ao clicar - melhorado */
+.tab-item::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease-out, height 0.4s ease-out;
+  pointer-events: none;
+}
+
+.tab-item:not(.special):active::before {
+  width: 50px;
+  height: 50px;
+}
+
+.tab-item.special:active::before {
+  background: rgba(255, 255, 255, 0.3);
+  width: 70px;
+  height: 70px;
+}
+
+/* Gradiente de fundo sutil */
+.bottom-tab-navigation::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 250, 252, 0.8) 0%,
+    rgba(248, 250, 252, 0.95) 50%,
+    rgba(248, 250, 252, 1) 100%
+  );
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  z-index: -1;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .bottom-tab-navigation {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .bottom-tab-navigation {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+  }
+  
+  .tab-container {
+    padding: var(--spacing-md) var(--spacing-md);
+    padding-top: var(--spacing-lg);
+  }
+  
+  .tab-item {
+    min-width: 50px;
+    padding: var(--spacing-xs);
+  }
+  
+  .tab-item.special {
+    width: 56px;
+    height: 56px;
+    margin-top: -45px;
+  }
+  
+  .tab-item.special .tab-label {
+    bottom: -24px;
+    font-size: 9px;
+  }
+  
+  .tab-label {
+    font-size: 9px;
+  }
+}
+
+/* Estados de carregamento */
+.tab-item.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.tab-item.loading .tab-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+  .tab-item,
+  .tab-icon,
+  .notification-dot,
+  .tab-item.special::after {
+    animation: none;
+    transition: none;
+  }
+  
+  .bottom-tab-navigation {
+    animation: none;
+  }
+}
+
+/* Focus states para acessibilidade */
+.tab-item:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.tab-item:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.tab-item.special:focus {
+  outline: 3px solid rgba(99, 102, 241, 0.5);
+  outline-offset: 3px;
+}
+
+/* Tema escuro (se implementado futuramente) */
+@media (prefers-color-scheme: dark) {
+  .bottom-tab-navigation::before {
+    background: linear-gradient(
+      180deg,
+      rgba(30, 41, 59, 0.8) 0%,
+      rgba(30, 41, 59, 0.95) 50%,
+      rgba(30, 41, 59, 1) 100%
+    );
+  }
+}

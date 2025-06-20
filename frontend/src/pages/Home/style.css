@@ -1,0 +1,121 @@
+.home {
+  min-height: 100vh;
+  background: var(--bg-secondary);
+}
+
+.home-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.home-content {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.main-content {
+  flex: 1;
+  padding: var(--spacing-lg);
+  max-width: calc(100% - 280px - var(--spacing-lg));
+}
+
+.home-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-secondary);
+}
+
+.loading-spinner {
+  text-align: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Desktop Styles */
+@media (min-width: 1025px) {
+  .home-content {
+    gap: var(--spacing-xl);
+  }
+  
+  .main-content {
+    padding: var(--spacing-xl);
+  }
+}
+
+/* Tablet Styles */
+@media (max-width: 1024px) {
+  .main-content {
+    max-width: 100%;
+    padding: var(--spacing-md);
+  }
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .home {
+    /* Adiciona espaço para o bottom navigation */
+    padding-bottom: 70px;
+  }
+  
+  .home-content {
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .main-content {
+    padding: var(--spacing-sm);
+  }
+  
+  /* Ajusta o espaçamento do último elemento para não ficar colado no bottom nav */
+  .main-content > *:last-child {
+    margin-bottom: var(--spacing-lg);
+  }
+}
+
+/* Mobile Small */
+@media (max-width: 480px) {
+  .home {
+    padding-bottom: 75px;
+  }
+  
+  .main-content {
+    padding: var(--spacing-xs);
+  }
+}
+
+/* Smooth transitions */
+.home-content,
+.main-content {
+  transition: all var(--transition-normal);
+}
+
+/* Loading animation */
+.home-loading .loading-spinner {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Ensure proper stacking context */
+.home {
+  position: relative;
+  z-index: 1;
+}
