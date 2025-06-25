@@ -7,7 +7,7 @@ import Api from './Api';
 import Utils from './Utils';
 
 // Importação de páginas
-import { Login, Home, PageNotFound, Menu, Profile, Messages } from './pages';
+import { Login, Register, Home, PageNotFound, Menu, Profile, Messages, Search } from './pages';
 
 // Importação de componentes
 import { LoadingScreen } from './components';
@@ -174,6 +174,14 @@ function App() {
             element={
               <PublicRoute restricted>
                 <Profile />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/search" 
+            element={
+              <PublicRoute restricted>
+                <Search />
               </PublicRoute>
             } 
           />

@@ -29,7 +29,7 @@ const Menu = () => {
   };
 
   const handleBack = () => {
-    navigate('/dashboard');
+    navigate(-1);
   };
 
   const menuItems = [
