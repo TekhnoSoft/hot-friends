@@ -5,9 +5,10 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Api from './Api';
 import Utils from './Utils';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Importação de páginas
-import { Login, Register, Home, PageNotFound, Menu, Profile, Messages, Search } from './pages';
+import { Login, Home, PageNotFound, Menu, Profile, Messages, Search } from './pages';
 
 // Importação de componentes
 import { LoadingScreen } from './components';
@@ -142,82 +143,84 @@ function App() {
 
   return (
     <MainContext.Provider value={contextValue}>
-      <Router>
-        <Routes>
-          {/* Rotas públicas */}
-          <Route 
-            path="/login" 
-            element={
-              <PublicRoute restricted>
-                <Login />
-              </PublicRoute>
-            } 
+      <GoogleOAuthProvider clientId="390488374513-a7tu5plian18qoq2de6g786ucavbk5sd.apps.googleusercontent.com">
+        <Router>
+          <Routes>
+            {/* Rotas públicas */}
+            <Route 
+              path="/login" 
+              element={
+                <PublicRoute restricted>
+                  <Login />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/" 
+              element={
+                <PublicRoute restricted>
+                  <Home />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/menu" 
+              element={
+                <PublicRoute restricted>
+                  <Menu />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <PublicRoute restricted>
+                  <Profile />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/search" 
+              element={
+                <PublicRoute restricted>
+                  <Search />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/messages" 
+              element={
+                <PublicRoute restricted>
+                  <Messages />
+                </PublicRoute>
+              } 
+            />
+            {/* Outras rotas privadas que serão adicionadas no futuro */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <PrivateRoute>
+                  <div />
+                </PrivateRoute>
+              } 
+            />
+            {/* Rota para página não encontrada */}
+            <Route path="*" element={<PageNotFound />} />
+          </Routes>
+          <ToastContainer 
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            style={{ zIndex: 999999 }} 
           />
-          <Route 
-            path="/" 
-            element={
-              <PublicRoute restricted>
-                <Home />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/menu" 
-            element={
-              <PublicRoute restricted>
-                <Menu />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/profile" 
-            element={
-              <PublicRoute restricted>
-                <Profile />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/search" 
-            element={
-              <PublicRoute restricted>
-                <Search />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/messages" 
-            element={
-              <PublicRoute restricted>
-                <Messages />
-              </PublicRoute>
-            } 
-          />
-          {/* Outras rotas privadas que serão adicionadas no futuro */}
-          <Route 
-            path="/dashboard" 
-            element={
-              <PrivateRoute>
-                <div />
-              </PrivateRoute>
-            } 
-          />
-          {/* Rota para página não encontrada */}
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-        <ToastContainer 
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          style={{ zIndex: 999999 }} 
-        />
-      </Router>
+        </Router>
+      </GoogleOAuthProvider>
     </MainContext.Provider>
   );
 }

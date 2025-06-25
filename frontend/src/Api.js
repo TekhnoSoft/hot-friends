@@ -17,6 +17,39 @@ const Api = {
         }).catch(err => {
             return err;
         });
+    },
+    login: async (email, password) => {
+        try {
+            const response = await axios.post(`${API_BASE}/users/login`, { email, password });
+            return response.data;
+        } catch (err) {
+            if (err.response && err.response.data) {
+                return err.response.data;
+            }
+            return { success: false, message: 'Erro de conexão com o servidor.' };
+        }
+    },
+    register: async (data) => {
+        try {
+            const response = await axios.post(`${API_BASE}/users/register`, data);
+            return response.data;
+        } catch (err) {
+            if (err.response && err.response.data) {
+                return err.response.data;
+            }
+            return { success: false, message: 'Erro de conexão com o servidor.' };
+        }
+    },
+    googleLogin: async (data) => {
+        try {
+            const response = await axios.post(`${API_BASE}/users/google`, data);
+            return response.data;
+        } catch (err) {
+            if (err.response && err.response.data) {
+                return err.response.data;
+            }
+            return { success: false, message: 'Erro de conexão com o servidor.' };
+        }
     }
 }
 

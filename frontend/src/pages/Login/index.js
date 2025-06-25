@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import Post from '../../components/Post';
 import './style.css';
+import Api from '../../Api';
+import { GoogleLogin, googleLogout } from '@react-oauth/google';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -26,10 +28,18 @@ const Login = () => {
     confirmPassword: '',
     name: '',
     username: '',
+    age: '',
+    gender: '',
+    cpf: '',
+    role: 'user',
     acceptTerms: false
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleData, setGoogleData] = useState({ email: '', googleToken: '' });
+  const [googleForm, setGoogleForm] = useState({ username: '', password: '', confirmPassword: '' });
+  const [googleErrors, setGoogleErrors] = useState({});
 
   // Mock data das últimas postagens
   const latestPosts = [
@@ -142,22 +152,26 @@ const Login = () => {
 
     // Validações específicas para cadastro
     if (!isLogin) {
-      if (!formData.name) {
-        newErrors.name = 'Nome é obrigatório';
-      }
-
       if (!formData.username) {
         newErrors.username = 'Username é obrigatório';
       } else if (formData.username.length < 3) {
         newErrors.username = 'Username deve ter pelo menos 3 caracteres';
       }
-
+      if (!formData.email) {
+        newErrors.email = 'Email é obrigatório';
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = 'Email inválido';
+      }
+      if (!formData.password) {
+        newErrors.password = 'Senha é obrigatória';
+      } else if (formData.password.length < 6) {
+        newErrors.password = 'Senha deve ter pelo menos 6 caracteres';
+      }
       if (!formData.confirmPassword) {
         newErrors.confirmPassword = 'Confirmação de senha é obrigatória';
       } else if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Senhas não coincidem';
       }
-
       if (!formData.acceptTerms) {
         newErrors.acceptTerms = 'Você deve aceitar os termos';
       }
@@ -177,21 +191,42 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Simular chamada da API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       if (isLogin) {
-        console.log('Login realizado:', { 
-          email: formData.email, 
-          password: formData.password 
-        });
-        // Redirecionar para dashboard
+        // Chamada real da API de login
+        const result = await Api.login(formData.email, formData.password);
+        if (result.success) {
+          // Salvar token no localStorage ou contexto
+          localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
+          // Redirecionar para dashboard ou página principal
+          window.location.href = '/';
+        } else {
+          setErrors({ general: result.message || 'Usuário ou senha inválidos.' });
+        }
       } else {
-        console.log('Cadastro realizado:', formData);
-        // Redirecionar para verificação de email ou dashboard
+        // Cadastro real
+        const data = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          age: Number(formData.age),
+          gender: formData.gender,
+          cpf: formData.cpf,
+          role: formData.role
+        };
+        const result = await Api.register(data);
+        if (result.success) {
+          // Exibe mensagem de sucesso e troca para login
+          setIsLogin(true);
+          setFormData({
+            email: '', password: '', confirmPassword: '', name: '', username: '', age: '', gender: '', cpf: '', role: 'user', acceptTerms: false
+          });
+          setErrors({});
+          alert('Cadastro realizado com sucesso! Faça login.');
+        } else {
+          setErrors({ general: result.message || 'Erro ao cadastrar.' });
+        }
       }
     } catch (error) {
-      console.error('Erro:', error);
       setErrors({ general: 'Erro interno. Tente novamente.' });
     } finally {
       setIsLoading(false);
@@ -206,14 +241,80 @@ const Login = () => {
       confirmPassword: '',
       name: '',
       username: '',
+      age: '',
+      gender: '',
+      cpf: '',
+      role: 'user',
       acceptTerms: false
     });
     setErrors({});
   };
 
-  const handleGoogleLogin = () => {
-    console.log('Login com Google');
-    // Implementar login com Google
+  const handleGoogleLogin = async (credentialResponse) => {
+    // credentialResponse.credential é o JWT do Google
+    try {
+      // Decodifica o token para pegar o email (ou use a API do Google)
+      const base64Url = credentialResponse.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const payload = JSON.parse(jsonPayload);
+      const email = payload.email;
+      // Chama backend
+      const result = await Api.googleLogin({ email, googleToken: credentialResponse.credential });
+      if (result.success) {
+        localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
+        window.location.href = '/';
+      } else if (result.needPassword) {
+        setGoogleData({ email, googleToken: credentialResponse.credential });
+        setShowGoogleModal(true);
+      } else {
+        setErrors({ general: result.message || 'Erro ao logar com Google.' });
+      }
+    } catch (err) {
+      setErrors({ general: 'Erro ao processar login com Google.' });
+    }
+  };
+
+  const handleGoogleModalChange = (e) => {
+    const { name, value } = e.target;
+    setGoogleForm(prev => ({ ...prev, [name]: value }));
+    if (googleErrors[name]) setGoogleErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const validateGoogleModal = () => {
+    const errs = {};
+    if (!googleForm.username) errs.username = 'Username é obrigatório';
+    if (!googleForm.password) errs.password = 'Senha é obrigatória';
+    else if (googleForm.password.length < 6) errs.password = 'Senha deve ter pelo menos 6 caracteres';
+    if (!googleForm.confirmPassword) errs.confirmPassword = 'Confirmação de senha é obrigatória';
+    else if (googleForm.password !== googleForm.confirmPassword) errs.confirmPassword = 'Senhas não coincidem';
+    setGoogleErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleGoogleModalSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateGoogleModal()) return;
+    setIsLoading(true);
+    try {
+      const result = await Api.googleLogin({
+        email: googleData.email,
+        googleToken: googleData.googleToken,
+        username: googleForm.username,
+        password: googleForm.password
+      });
+      if (result.success) {
+        setShowGoogleModal(false);
+        localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
+        window.location.href = '/';
+      } else {
+        setGoogleErrors({ general: result.message || 'Erro ao cadastrar com Google.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -283,14 +384,11 @@ const Login = () => {
 
             {/* Google Login */}
             <div className="loginpage-social-login">
-              <button 
-                className="loginpage-google-btn"
-                onClick={handleGoogleLogin}
-                type="button"
-              >
-                <Chrome size={20} />
-                <span>Continuar com Google</span>
-              </button>
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => setErrors({ general: 'Erro ao autenticar com Google.' })}
+                useOneTap
+              />
             </div>
 
             <div className="loginpage-divider">
@@ -308,25 +406,7 @@ const Login = () => {
               {!isLogin && (
                 <>
                   <div className="loginpage-input-group">
-                    <label className="loginpage-label">Nome completo</label>
-                    <div className="loginpage-input-container">
-                      <User size={20} className="loginpage-input-icon" />
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        placeholder="Seu nome completo"
-                        className={`loginpage-input ${errors.name ? 'loginpage-input-error' : ''}`}
-                      />
-                    </div>
-                    {errors.name && (
-                      <span className="loginpage-error">{errors.name}</span>
-                    )}
-                  </div>
-
-                  <div className="loginpage-input-group">
-                    <label className="loginpage-label">Nome de usuário</label>
+                    <label className="loginpage-label">Nome de usuário <span style={{color: 'red'}}>*</span></label>
                     <div className="loginpage-input-container">
                       <span className="loginpage-username-prefix">@</span>
                       <input
@@ -342,77 +422,102 @@ const Login = () => {
                       <span className="loginpage-error">{errors.username}</span>
                     )}
                   </div>
-                </>
-              )}
 
-              <div className="loginpage-input-group">
-                <label className="loginpage-label">Email</label>
-                <div className="loginpage-input-container">
-                  <Mail size={20} className="loginpage-input-icon" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="seu@email.com"
-                    className={`loginpage-input ${errors.email ? 'loginpage-input-error' : ''}`}
-                  />
-                </div>
-                {errors.email && (
-                  <span className="loginpage-error">{errors.email}</span>
-                )}
-              </div>
-
-              <div className="loginpage-input-group">
-                <label className="loginpage-label">Senha</label>
-                <div className="loginpage-input-container">
-                  <Lock size={20} className="loginpage-input-icon" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Sua senha"
-                    className={`loginpage-input ${errors.password ? 'loginpage-input-error' : ''}`}
-                  />
-                  <button
-                    type="button"
-                    className="loginpage-password-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <span className="loginpage-error">{errors.password}</span>
-                )}
-              </div>
-
-              {!isLogin && (
-                <div className="loginpage-input-group">
-                  <label className="loginpage-label">Confirmar senha</label>
-                  <div className="loginpage-input-container">
-                    <Lock size={20} className="loginpage-input-icon" />
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      placeholder="Confirme sua senha"
-                      className={`loginpage-input ${errors.confirmPassword ? 'loginpage-input-error' : ''}`}
-                    />
-                    <button
-                      type="button"
-                      className="loginpage-password-toggle"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
+                  <div className="loginpage-input-group">
+                    <label className="loginpage-label">Email <span style={{color: 'red'}}>*</span></label>
+                    <div className="loginpage-input-container">
+                      <Mail size={20} className="loginpage-input-icon" />
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="seu@email.com"
+                        className={`loginpage-input ${errors.email ? 'loginpage-input-error' : ''}`}
+                      />
+                    </div>
+                    {errors.email && (
+                      <span className="loginpage-error">{errors.email}</span>
+                    )}
                   </div>
-                  {errors.confirmPassword && (
-                    <span className="loginpage-error">{errors.confirmPassword}</span>
-                  )}
-                </div>
+
+                  <div className="loginpage-input-group">
+                    <label className="loginpage-label">Senha <span style={{color: 'red'}}>*</span></label>
+                    <div className="loginpage-input-container">
+                      <Lock size={20} className="loginpage-input-icon" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Sua senha"
+                        className={`loginpage-input ${errors.password ? 'loginpage-input-error' : ''}`}
+                      />
+                      <button
+                        type="button"
+                        className="loginpage-password-toggle"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <span className="loginpage-error">{errors.password}</span>
+                    )}
+                  </div>
+
+                  <div className="loginpage-input-group">
+                    <label className="loginpage-label">Confirmar senha <span style={{color: 'red'}}>*</span></label>
+                    <div className="loginpage-input-container">
+                      <Lock size={20} className="loginpage-input-icon" />
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirme sua senha"
+                        className={`loginpage-input ${errors.confirmPassword ? 'loginpage-input-error' : ''}`}
+                      />
+                      <button
+                        type="button"
+                        className="loginpage-password-toggle"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && (
+                      <span className="loginpage-error">{errors.confirmPassword}</span>
+                    )}
+                  </div>
+
+                  <div className="loginpage-checkbox-group">
+                    <label className="loginpage-checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="acceptTerms"
+                        checked={formData.acceptTerms}
+                        onChange={handleInputChange}
+                        className="loginpage-checkbox"
+                      />
+                      <span className="loginpage-checkbox-custom"></span>
+                      <span className="loginpage-checkbox-text">
+                        Eu aceito os{' '}
+                        <a href="/terms" className="loginpage-link">Termos de Uso</a>
+                        {' '}e{' '}
+                        <a href="/privacy" className="loginpage-link">Política de Privacidade</a>
+                        <span style={{color: 'red'}}> *</span>
+                      </span>
+                    </label>
+                    {errors.acceptTerms && (
+                      <span className="loginpage-error">{errors.acceptTerms}</span>
+                    )}
+                  </div>
+
+                  <div style={{marginTop: 8, color: '#888', fontSize: 13}}>
+                    Os campos marcados com <span style={{color: 'red'}}>*</span> são obrigatórios.
+                  </div>
+                </>
               )}
 
               {isLogin && (
@@ -424,30 +529,6 @@ const Login = () => {
                   >
                     Esqueceu sua senha?
                   </button>
-                </div>
-              )}
-
-              {!isLogin && (
-                <div className="loginpage-checkbox-group">
-                  <label className="loginpage-checkbox-label">
-                    <input
-                      type="checkbox"
-                      name="acceptTerms"
-                      checked={formData.acceptTerms}
-                      onChange={handleInputChange}
-                      className="loginpage-checkbox"
-                    />
-                    <span className="loginpage-checkbox-custom"></span>
-                    <span className="loginpage-checkbox-text">
-                      Eu aceito os{' '}
-                      <a href="/terms" className="loginpage-link">Termos de Uso</a>
-                      {' '}e{' '}
-                      <a href="/privacy" className="loginpage-link">Política de Privacidade</a>
-                    </span>
-                  </label>
-                  {errors.acceptTerms && (
-                    <span className="loginpage-error">{errors.acceptTerms}</span>
-                  )}
                 </div>
               )}
 
@@ -587,6 +668,36 @@ const Login = () => {
           </div>
         </div>
       </footer>
+
+      {/* Modal para completar cadastro Google */}
+      {showGoogleModal && (
+        <div className="google-modal-overlay">
+          <div className="google-modal">
+            <h3>Complete seu cadastro</h3>
+            <form onSubmit={handleGoogleModalSubmit}>
+              <div className="loginpage-input-group">
+                <label>Nome de usuário</label>
+                <input type="text" name="username" value={googleForm.username} onChange={handleGoogleModalChange} />
+                {googleErrors.username && <span className="loginpage-error">{googleErrors.username}</span>}
+              </div>
+              <div className="loginpage-input-group">
+                <label>Senha</label>
+                <input type="password" name="password" value={googleForm.password} onChange={handleGoogleModalChange} />
+                {googleErrors.password && <span className="loginpage-error">{googleErrors.password}</span>}
+              </div>
+              <div className="loginpage-input-group">
+                <label>Confirmar senha</label>
+                <input type="password" name="confirmPassword" value={googleForm.confirmPassword} onChange={handleGoogleModalChange} />
+                {googleErrors.confirmPassword && <span className="loginpage-error">{googleErrors.confirmPassword}</span>}
+              </div>
+              {googleErrors.general && <div className="loginpage-error-general">{googleErrors.general}</div>}
+              <button type="submit" className="loginpage-submit-btn" disabled={isLoading}>
+                {isLoading ? 'Enviando...' : 'Finalizar cadastro'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
