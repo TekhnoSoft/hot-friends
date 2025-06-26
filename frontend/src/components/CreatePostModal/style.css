@@ -1,0 +1,415 @@
+.hf-create-post-modal {
+    padding: 0px;
+    color: #1a1a1a;
+}
+
+.hf-post-content {
+    width: 100%;
+    min-height: 120px;
+    padding: 16px;
+    border: 2px solid #eaeaea;
+    border-radius: 12px;
+    resize: none;
+    margin-bottom: 20px;
+    font-size: 16px;
+    line-height: 1.5;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.hf-post-content:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.hf-post-content::placeholder {
+    color: #a0aec0;
+}
+
+.hf-media-preview {
+    position: relative;
+    margin-bottom: 20px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.hf-media-preview img,
+.hf-media-preview video {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    background-color: #000;
+}
+
+.hf-media-preview video {
+    display: block;
+}
+
+.hf-audio-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #eaeaea;
+}
+
+.hf-audio-recorder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #eaeaea;
+    margin-bottom: 20px;
+}
+
+.hf-audio-recorder-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.hf-audio-recorder button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.hf-audio-recorder .record-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.hf-audio-recorder .record-button:hover {
+    background-color: #c82333;
+}
+
+.hf-audio-recorder .stop-button {
+    background-color: #6c757d;
+    color: white;
+}
+
+.hf-audio-recorder .stop-button:hover {
+    background-color: #5a6268;
+}
+
+.hf-remove-media {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.hf-remove-media:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+.hf-post-toolbar {
+    display: flex;
+    gap: 12px;
+    padding: 16px 0;
+    border-top: 2px solid #eaeaea;
+    border-bottom: 2px solid #eaeaea;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: relative;
+}
+
+.hf-post-toolbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hf-post-toolbar button {
+    background: none;
+    border: 2px solid #eaeaea;
+    padding: 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s ease;
+    min-width: 60px;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.hf-post-toolbar button .hf-button-text {
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hf-post-toolbar button:hover {
+    background-color: #f8f9fa;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.hf-post-toolbar button:hover .hf-button-text {
+    color: var(--primary-color);
+}
+
+.hf-post-toolbar button.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.hf-post-toolbar button.active .hf-button-text {
+    color: white;
+}
+
+.hf-post-toolbar button.active:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    opacity: 0.9;
+}
+
+.hf-post-settings {
+    margin: 20px 0;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 16px;
+    border: 2px solid #eaeaea;
+}
+
+.hf-post-settings h4 {
+    margin-bottom: 16px;
+    color: #1a1a1a;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.hf-post-settings input[type="text"],
+.hf-post-settings input[type="number"],
+.hf-post-settings input[type="datetime-local"],
+.hf-post-settings textarea {
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border: 2px solid #eaeaea;
+    border-radius: 12px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    background-color: white;
+}
+
+.hf-post-settings input:focus,
+.hf-post-settings textarea:focus {
+    outline: none;
+    border-color: #1da1f2;
+    box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.1);
+}
+
+.hf-quiz-question {
+    margin-bottom: 24px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 2px solid #eaeaea;
+}
+
+.hf-quiz-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.hf-quiz-option:hover {
+    background-color: #edf2f7;
+}
+
+.hf-quiz-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.hf-add-option,
+.hf-add-question {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: none;
+    border: 2px dashed #a0aec0;
+    padding: 12px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #64748b;
+    width: 100%;
+    margin: 12px 0;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.hf-add-option:hover,
+.hf-add-question:hover {
+    background-color: #f8f9fa;
+    border-color: #1da1f2;
+    color: #1da1f2;
+}
+
+.hf-submit-post {
+    width: 100%;
+    padding: 14px 24px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    margin-top: 20px;
+}
+
+.hf-submit-post:hover {
+    background-color: var(--primary-color);
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+.hf-submit-post:active {
+    transform: translateY(0);
+    opacity: 0.8;
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hf-post-settings {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .hf-create-post-modal {
+        padding: 0px;
+    }
+
+    .hf-post-toolbar {
+        gap: 8px;
+    }
+    
+    .hf-post-toolbar button {
+        min-width: 50px;
+        height: 50px;
+        padding: 6px;
+    }
+    
+    .hf-post-toolbar button .hf-button-text {
+        font-size: 10px;
+    }
+    
+    .hf-quiz-option {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .hf-post-settings {
+        padding: 16px;
+    }
+}
+
+/* Removendo as classes do tooltip que não serão mais usadas */
+.hf-tooltip,
+.hf-tooltip .hf-tooltiptext,
+.hf-tooltip:hover .hf-tooltiptext,
+.hf-tooltip .hf-tooltiptext::after,
+.hf-tooltip.active .hf-tooltiptext,
+.hf-tooltip.active .hf-tooltiptext::after {
+    display: none;
+}
+
+.hf-comments-disabled-notice,
+.hf-temporary-post-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.hf-comments-disabled-notice {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+}
+
+.hf-temporary-post-notice {
+    background-color: #cce5ff;
+    border: 1px solid #b8daff;
+    color: #004085;
+}
+
+.hf-price-input {
+    font-family: monospace;
+    letter-spacing: 0.5px;
+}
+
+.hf-post-settings input[type="datetime-local"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #eaeaea;
+    border-radius: 12px;
+    font-size: 15px;
+    color: #1a1a1a;
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.hf-post-settings input[type="datetime-local"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+} 

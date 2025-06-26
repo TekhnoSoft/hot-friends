@@ -2,11 +2,55 @@ const express = require('express');
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const { validateOrigin } = require('../middlewares/CorsMiddleware');
 const { validateToken } = require('../middlewares/AuthMiddleware');
 
 const db = require('../database');
+
+// Configuração do Multer para upload de arquivos
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        let type = req.body && req.body.type ? req.body.type.toLowerCase() : '';
+
+        const uploadPath = path.join(__dirname, '..', 'upload', type);
+        
+        // Cria o diretório se não existir
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        
+        console.log('Upload type:', type);
+        console.log('Upload path:', uploadPath);
+        cb(null, uploadPath);
+    },
+    filename: function (req, file, cb) {
+        const userId = req.user.id;
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = `${userId}-${uniqueSuffix}${path.extname(file.originalname)}`;
+        console.log('Generated filename:', filename);
+        cb(null, filename);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.mimetype)) {
+        return cb(new Error('Tipo de arquivo não suportado. Use apenas JPG, PNG ou GIF.'), false);
+    }
+    cb(null, true);
+};
+
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB
+    }
+});
 
 router.get('/auth', validateToken, async (req, res) => {
     try {
@@ -46,6 +90,7 @@ router.post('/login', validateOrigin, async (req, res) => {
 // Rota de cadastro
 router.post('/register', validateOrigin, async (req, res) => {
     const { username, email, password, acceptTerms } = req.body;
+
     if (!username || !email || !password || !acceptTerms) {
         return res.status(400).json({ success: false, message: 'Username, email, senha e aceite dos termos são obrigatórios.' });
     }
@@ -64,8 +109,8 @@ router.post('/register', validateOrigin, async (req, res) => {
         const password_hash = await bcrypt.hash(password, 10);
         // Insere usuário
         await db.query(
-            'INSERT INTO Users (id, username, email, password_hash) VALUES (NEWID(), @param0, @param1, @param2)',
-            [username, email, password_hash]
+            'INSERT INTO Users (id, username, email, password_hash, role) VALUES (NEWID(), @param0, @param1, @param2, @param3)',
+            [username, email, password_hash, 'user']
         );
         return res.status(201).json({ success: true, message: 'Usuário cadastrado com sucesso.' });
     } catch (err) {
@@ -114,6 +159,184 @@ router.post('/google', validateOrigin, async (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ success: false, message: 'Erro interno do servidor.' });
+    }
+});
+
+// Rota para retornar dados do usuário autenticado
+router.get('/get', validateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const result = await db.query(
+            'SELECT id, name, username, email, bio, location, website, avatar, cover_image as coverImage, role FROM Users WHERE id = @param0', 
+            [userId]
+        );
+        const user = result.recordset[0];
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Usuário não encontrado.' });
+        }
+        return res.status(200).json({ success: true, data: user });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'Erro ao buscar usuário.' });
+    }
+});
+
+// Rota para atualizar perfil
+router.put('/update', validateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { name, username, bio, location, website, avatar, coverImage } = req.body;
+
+        // Verifica se o username já existe (se foi alterado)
+        if (username) {
+            const existingUsername = await db.query(
+                'SELECT id FROM Users WHERE username = @param0 AND id != @param1',
+                [username, userId]
+            );
+            if (existingUsername.recordset.length > 0) {
+                return res.status(409).json({ success: false, message: 'Username já está em uso.' });
+            }
+        }
+
+        // Constrói a query de atualização dinamicamente
+        let updateFields = [];
+        let params = [];
+        let paramIndex = 0;
+
+        if (name) {
+            updateFields.push(`name = @param${paramIndex}`);
+            params.push(name);
+            paramIndex++;
+        }
+        if (username) {
+            updateFields.push(`username = @param${paramIndex}`);
+            params.push(username);
+            paramIndex++;
+        }
+        if (bio !== undefined) {
+            updateFields.push(`bio = @param${paramIndex}`);
+            params.push(bio);
+            paramIndex++;
+        }
+        if (location !== undefined) {
+            updateFields.push(`location = @param${paramIndex}`);
+            params.push(location);
+            paramIndex++;
+        }
+        if (website !== undefined) {
+            updateFields.push(`website = @param${paramIndex}`);
+            params.push(website);
+            paramIndex++;
+        }
+        if (avatar) {
+            updateFields.push(`avatar = @param${paramIndex}`);
+            params.push(avatar);
+            paramIndex++;
+        }
+        if (coverImage) {
+            updateFields.push(`cover_image = @param${paramIndex}`);
+            params.push(coverImage);
+            paramIndex++;
+        }
+
+        if (updateFields.length === 0) {
+            return res.status(400).json({ success: false, message: 'Nenhum campo para atualizar.' });
+        }
+
+        // Adiciona o userId como último parâmetro
+        params.push(userId);
+
+        const query = `
+            UPDATE Users 
+            SET ${updateFields.join(', ')}
+            WHERE id = @param${paramIndex};
+            
+            SELECT id, name, username, email, bio, location, website, avatar, cover_image as coverImage, role 
+            FROM Users 
+            WHERE id = @param${paramIndex};
+        `;
+
+        const result = await db.query(query, params);
+        const updatedUser = result.recordset[0];
+
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Perfil atualizado com sucesso.',
+            data: updatedUser
+        });
+    } catch (err) {
+        console.error('Erro ao atualizar perfil:', err);
+        return res.status(500).json({ success: false, message: 'Erro ao atualizar perfil.' });
+    }
+});
+
+// Rota para upload de arquivos
+router.post('/upload', validateToken, (req, res) => {
+    upload.single('file')(req, res, function(err) {
+        if (err) {
+            console.error('Erro no upload:', err);
+            return res.status(400).json({ success: false, message: err.message });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Nenhum arquivo enviado.' });
+        }
+
+        // Verifica se o tipo está correto
+        const type = req.body && req.body.type ? req.body.type.toLowerCase() : '';
+        if (!['avatar', 'cover'].includes(type)) {
+            // Remove o arquivo se foi salvo
+            if (req.file.path && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Tipo de upload inválido. Use "avatar" ou "cover".'
+            });
+        }
+
+        console.log('Upload concluído:', {
+            type: type,
+            body: req.body,
+            file: req.file
+        });
+
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Upload realizado com sucesso.',
+            filename: req.file.filename
+        });
+    });
+});
+
+// Rota para servir imagens
+router.get('/image/:type/:filename', async (req, res) => {
+    try {
+        const { type, filename } = req.params;
+        const imagePath = path.join(__dirname, '..', 'upload', type, filename);
+
+        // Verifica se o arquivo existe
+        if (!fs.existsSync(imagePath)) {
+            return res.status(404).json({ success: false, message: 'Imagem não encontrada.' });
+        }
+
+        // Define o tipo de conteúdo baseado na extensão do arquivo
+        const ext = path.extname(filename).toLowerCase();
+        const mimeTypes = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif'
+        };
+        
+        res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 ano
+        
+        // Envia o arquivo
+        res.sendFile(imagePath);
+    } catch (err) {
+        console.error('Erro ao servir imagem:', err);
+        res.status(500).json({ success: false, message: 'Erro ao carregar imagem.' });
     }
 });
 

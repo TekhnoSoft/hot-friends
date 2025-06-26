@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -8,10 +8,12 @@ import {
   Menu 
 } from 'lucide-react';
 import './style.css';
+import CreatePostModal from '../CreatePostModal';
 
 const BottomTabNavigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
 
   const tabs = [
     {
@@ -55,41 +57,46 @@ const BottomTabNavigation = () => {
 
   const handleTabClick = (tab) => {
     if (tab.id === 'post') {
-      console.log('Abrir criação de post');
-      // navigate(tab.path);
-    } else {
+      setIsCreatePostModalOpen(true);
+    } else {  
       navigate(tab.path);
     }
   };
 
   return (
-    <nav className="bottom-tab-navigation">
-      <div className="tab-container">
-        {tabs.map((tab) => {
-          const IconComponent = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              className={`tab-item ${tab.isActive ? 'active' : ''} ${tab.isSpecial ? 'special' : ''}`}
-              onClick={() => handleTabClick(tab)}
-            >
-              <div className="tab-icon-container">
-                <IconComponent 
-                  size={tab.isSpecial ? 28 : 24} 
-                  className="tab-icon"
-                  fill={tab.isActive && !tab.isSpecial ? 'currentColor' : 'none'}
-                  strokeWidth={tab.isSpecial ? 2.5 : 2}
-                />
-                {tab.hasNotification && (
-                  <div className="notification-dot" />
-                )}
-              </div>
-              <span className="tab-label">{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+    <>  
+      <CreatePostModal
+          isOpen={isCreatePostModalOpen}
+          onClose={() => setIsCreatePostModalOpen(false)}
+      />
+      <nav className="bottom-tab-navigation">
+        <div className="tab-container">
+          {tabs.map((tab) => {
+            const IconComponent = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                className={`tab-item ${tab.isActive ? 'active' : ''} ${tab.isSpecial ? 'special' : ''}`}
+                onClick={() => handleTabClick(tab)}
+              >
+                <div className="tab-icon-container">
+                  <IconComponent 
+                    size={tab.isSpecial ? 28 : 24} 
+                    className="tab-icon"
+                    fill={tab.isActive && !tab.isSpecial ? 'currentColor' : 'none'}
+                    strokeWidth={tab.isSpecial ? 2.5 : 2}
+                  />
+                  {tab.hasNotification && (
+                    <div className="notification-dot" />
+                  )}
+                </div>
+                <span className="tab-label">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 };
 

@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Heart, 
-  MessageCircle, 
-  Gift, 
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import {
+  Heart,
+  MessageCircle,
+  Gift,
   Bookmark,
   MoreHorizontal,
   Play,
@@ -10,34 +10,84 @@ import {
   Copy,
   FolderPlus,
   EyeOff,
-  Flag
+  Flag,
+  Lock,
+  PieChart,
+  HelpCircle,
+  Award,
+  Mic,
+  DollarSign,
+  UnlockKeyhole,
+  Image,
+  Trash2,
+  Send,
+  Trash
 } from 'lucide-react';
 import GiftModal from '../GiftModal';
+import PaymentModal from '../PaymentModal';
+import Api from '../../Api';
+import { MainContext } from '../../helpers/MainContext';
 import './style.css';
 
-const Post = ({ post }) => {
-  const [isLiked, setIsLiked] = useState(post.isLiked || false);
-  const [isSaved, setIsSaved] = useState(post.isSaved || false);
-  const [likesCount, setLikesCount] = useState(post.likesCount || 0);
+const Post = ({ post, onPostDeleted }) => {
+  const { user } = useContext(MainContext);
+  const [isLiked, setIsLiked] = useState(post.is_liked === 1);
+  const [isSaved, setIsSaved] = useState(post.is_saved === 1);
+  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [newComment, setNewComment] = useState('');
-  const [comments, setComments] = useState(post.comments || []);
+  const [comments, setComments] = useState([]);
+  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [selectedPollOption, setSelectedPollOption] = useState(null);
+  const [quizResponses, setQuizResponses] = useState({});
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
   const videoRef = useRef(null);
+  const audioRef = useRef(null);
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+  const handleLike = async (event) => {
+    event.stopPropagation();
+    
+    // Optimistic update
+    const wasLiked = isLiked;
+    setIsLiked(!wasLiked);
+    setLikesCount(prev => wasLiked ? prev - 1 : prev + 1);
+
+    try {
+      const response = await Api.toggleLike(post.id);
+      if (!response.success) {
+        // Reverte as mudanças se a requisição falhar
+        setIsLiked(wasLiked);
+        setLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
+      }
+    } catch (error) {
+      console.error('Erro ao processar like:', error);
+      // Reverte as mudanças em caso de erro
+      setIsLiked(wasLiked);
+      setLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
+    }
   };
 
-  const handleSave = () => {
-    setIsSaved(!isSaved);
-    console.log(isSaved ? 'Post removido dos salvos' : 'Post salvo');
+  const handleSave = async (event) => {
+    event.stopPropagation();
+    try {
+      setIsSaved(!isSaved);
+      const response = await Api.toggleSave(post.id);
+      if (response.success) {
+        setIsSaved(response.action === 'saved');
+      }
+    } catch (error) {
+      setIsSaved(!isSaved);
+      console.error('Erro ao salvar post:', error);
+    }
   };
 
   const handlePlay = () => {
@@ -46,6 +96,7 @@ const Post = ({ post }) => {
         videoRef.current.pause();
       } else {
         videoRef.current.play();
+        videoRef.current.muted = false;
       }
       setIsPlaying(!isPlaying);
     }
@@ -60,21 +111,30 @@ const Post = ({ post }) => {
     setOpenMenuId(openMenuId ? null : post.id);
   };
 
-  const handleMenuAction = (action, event) => {
+  const handleMenuAction = async (action, event) => {
     event.stopPropagation();
-    console.log(`Action: ${action} for post:`, post.id);
     setOpenMenuId(null);
-    
-    switch(action) {
+
+    switch (action) {
       case 'copy':
         navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
-        console.log('Link copiado!');
+        break;
+      case 'delete':
+        if (window.confirm('Tem certeza que deseja deletar este post?')) {
+          try {
+            await Api.deletePost(post.id);
+            setIsVisible(false);
+            if (onPostDeleted) {
+              onPostDeleted(post.id);
+            }
+          } catch (error) {
+            console.error('Erro ao deletar post:', error);
+            alert('Erro ao deletar post. Tente novamente.');
+          }
+        }
         break;
       case 'collection':
-        console.log('Adicionar à coleção');
-        break;
-      case 'hide':
-        console.log('Ocultar post');
+        handleSave(event);
         break;
       case 'report':
         console.log('Denunciar post');
@@ -84,31 +144,351 @@ const Post = ({ post }) => {
     }
   };
 
-  const handleAddComment = (e) => {
-    e.preventDefault();
-    if (newComment.trim()) {
-      const comment = {
-        id: Date.now(),
-        text: newComment,
-        author: {
-          name: 'Você',
-          avatar: '/default-avatar.png'
-        },
-        createdAt: new Date().toISOString()
-      };
-      setComments([comment, ...comments]);
-      setNewComment('');
+  const loadComments = async () => {
+    try {
+      setIsLoadingComments(true);
+      const response = await Api.getComments(post.id);
+      setComments(response.comments || []);
+      setCommentsCount(response.total || 0);
+    } catch (error) {
+      console.error('Erro ao carregar comentários:', error);
+      setComments([]);
+    } finally {
+      setIsLoadingComments(false);
     }
   };
 
-  const formatTime = (timestamp) => {
+  useEffect(() => {
+    if (showComments) {
+      loadComments();
+    }
+  }, [showComments]);
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
+    try {
+      const comment = await Api.addComment(post.id, newComment);
+      setComments(prev => Array.isArray(prev) ? [comment, ...prev] : [comment]);
+      setCommentsCount(prev => prev + 1);
+      setNewComment('');
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error);
+    }
+  };
+
+  const handleRemoveComment = async (commentId) => {
+    if (!window.confirm('Tem certeza que deseja remover este comentário?')) return;
+
+    try {
+      await Api.deleteComment(post.id, commentId);
+      setComments(prev => Array.isArray(prev) ? prev.filter(comment => comment.id !== commentId) : []);
+      setCommentsCount(prev => prev - 1);
+    } catch (error) {
+      console.error('Erro ao remover comentário:', error);
+    }
+  };
+
+  const formatRelativeTime = (dateString) => {
+    const date = new Date(dateString);
     const now = new Date();
-    const postTime = new Date(timestamp);
-    const diffInHours = Math.floor((now - postTime) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Agora';
-    if (diffInHours < 24) return `${diffInHours}h`;
-    return `${Math.floor(diffInHours / 24)}d`;
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+    const diffInYears = Math.floor(diffInDays / 365);
+
+    if (diffInSeconds < 60) return 'agora';
+    if (diffInMinutes < 60) return `${diffInMinutes} min`;
+    if (diffInHours < 24) return `${diffInHours} h`;
+    if (diffInDays < 365) return `${diffInDays} d`;
+    return `${diffInYears} a`;
+  };
+
+  const handlePollVote = async (optionIndex) => {
+    try {
+      const response = await Api.voteInPoll(post.id, optionIndex);
+      if (response.success) {
+        setSelectedPollOption(optionIndex);
+      }
+    } catch (error) {
+      console.error('Erro ao votar:', error);
+    }
+  };
+
+  const handleQuizResponse = (questionIndex, optionIndex) => {
+    setQuizResponses(prev => ({
+      ...prev,
+      [questionIndex]: optionIndex
+    }));
+  };
+
+  const handleSubmitQuiz = async () => {
+    try {
+      const response = await Api.submitQuizResponses(post.id, Object.values(quizResponses));
+      if (response.success) {
+        console.log('Quiz enviado com sucesso!', response.score);
+      }
+    } catch (error) {
+      console.error('Erro ao enviar quiz:', error);
+    }
+  };
+
+  const handleUnlockContent = () => {
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setIsUnlocked(true);
+    setShowPaymentModal(false);
+  };
+
+  const formatPrice = (price) => {
+    if (!price) return 'R$ 0,00';
+    return `R$ ${Number(price).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
+  const renderPaidContentOverlay = () => {
+    // Se o post for pago e não estiver desbloqueado, mostra apenas a prévia
+    return (
+      <div className="post-content-wrapper">
+        {post.preview_media_url ? (
+          <div className="preview-media">
+            {post.preview_media_type === 'image' && (
+              <img
+                src={`http://localhost:3001/posts/media/${post.preview_media_url}`}
+                alt="Preview"
+                className="post-image blur-preview"
+              />
+            )}
+            {post.preview_media_type === 'video' && (
+              <video
+                src={`http://localhost:3001/posts/media/${post.preview_media_url}`}
+                className="post-video blur-preview"
+                muted
+                loop
+                autoPlay
+              />
+            )}
+          </div>
+        ) : (
+          // Se não houver prévia, mostra um placeholder
+          <div className="preview-placeholder">
+            <img
+              src="/images/content-preview.jpg"
+              alt="Content Preview"
+              className="post-image blur-preview"
+            />
+          </div>
+        )}
+        <div className="paid-content-overlay">
+          <div className="paid-content-info">
+            <Lock size={32} />
+            <h3>Conteúdo Exclusivo</h3>
+            <p>Desbloqueie este conteúdo por {formatPrice(post.price)}</p>
+            <button className="unlock-button" onClick={handleUnlockContent}>
+              Desbloquear Conteúdo
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const parseSafeJson = (jsonString, defaultValue = []) => {
+    try {
+      return jsonString ? JSON.parse(jsonString) : defaultValue;
+    } catch (error) {
+      console.error('Erro ao fazer parse do JSON:', error);
+      return defaultValue;
+    }
+  };
+
+  const renderMedia = () => {
+    if (!post.media_url) return null;
+
+    switch (post.media_type) {
+      case 'image':
+        return (
+          <img
+            src={`http://localhost:3001/posts/media/${post.media_url}`}
+            alt="Post content"
+            className="post-image"
+          />
+        );
+
+      case 'video':
+        return (
+          <div className="post-video-container">
+            <video
+              ref={videoRef}
+              src={`http://localhost:3001/posts/media/${post.media_url}`}
+              className="post-video"
+              controls={isPlaying}
+              muted
+              loop
+              playsInline
+              onClick={handlePlay}
+            />
+            {!isPlaying && (
+              <button
+                className="video-play-button"
+                onClick={handlePlay}
+              >
+                <Play size={24} />
+              </button>
+            )}
+          </div>
+        );
+
+      case 'audio':
+        return (
+          <div className="post-audio-container">
+            <audio
+              ref={audioRef}
+              src={`http://localhost:3001/posts/media/${post.media_url}`}
+              controls
+              className="post-audio"
+            />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const renderPostContent = () => {
+    // Se o post for pago e não estiver desbloqueado, mostra o overlay
+    if (post.is_paid && !isUnlocked) {
+      return renderPaidContentOverlay();
+    }
+
+    // Se o post estiver desbloqueado ou for gratuito, mostra o conteúdo normal
+    switch (post.post_type) {
+      case 'poll':
+        const pollOptions = parseSafeJson(post.poll_options);
+        return (
+          <div className="post-content-wrapper">
+            {renderMedia()}
+            <div className="post-poll">
+              <h4>Enquete</h4>
+              {pollOptions.map((option, index) => (
+                <button
+                  key={index}
+                  className={`poll-option ${selectedPollOption === index ? 'selected' : ''}`}
+                  onClick={() => handlePollVote(index)}
+                  disabled={selectedPollOption !== null}
+                >
+                  <span className="poll-option-text">{option}</span>
+                  {selectedPollOption !== null && (
+                    <span className="poll-option-percentage">
+                      {post.pollResults?.[index] || 0}%
+                    </span>
+                  )}
+                </button>
+              ))}
+              {post.poll_end_date && (
+                <p className="poll-end-date">
+                  Encerra em: {new Date(post.poll_end_date).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'quiz':
+        const quizQuestions = parseSafeJson(post.quiz_questions);
+        return (
+          <div className="post-content-wrapper">
+            {renderMedia()}
+            <div className="post-quiz">
+              <h4>Quiz</h4>
+              {quizQuestions.map((question, qIndex) => (
+                <div key={qIndex} className="quiz-question">
+                  <p className="question-text">{question.question}</p>
+                  <div className="quiz-options">
+                    {question.options.map((option, oIndex) => (
+                      <button
+                        key={oIndex}
+                        className={`quiz-option ${quizResponses[qIndex] === oIndex ? 'selected' : ''}`}
+                        onClick={() => handleQuizResponse(qIndex, oIndex)}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <button
+                className="submit-quiz-button"
+                onClick={handleSubmitQuiz}
+                disabled={Object.keys(quizResponses).length !== quizQuestions.length}
+              >
+                Enviar Respostas
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'challenge':
+        return (
+          <div className="post-content-wrapper">
+            {renderMedia()}
+            <div className="post-challenge">
+              <h4>Desafio</h4>
+              <p className="challenge-description">{post.challenge_description}</p>
+              {post.challenge_reward && (
+                <div className="challenge-reward">
+                  <Award size={20} />
+                  <span>Recompensa: {post.challenge_reward}</span>
+                </div>
+              )}
+              {post.challenge_end_date && (
+                <p className="challenge-end-date">
+                  Termina em: {new Date(post.challenge_end_date).toLocaleDateString()}
+                </p>
+              )}
+              <button className="participate-button">
+                Participar do Desafio
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'regular':
+      default:
+        return renderMedia();
+    }
+  };
+
+  const renderPostTypeIcon = () => {
+    // Primeiro verificamos o tipo do post
+    switch (post.post_type) {
+      case 'poll':
+        return <PieChart size={16} />;
+      case 'quiz':
+        return <HelpCircle size={16} />;
+      case 'challenge':
+        return <Award size={16} />;
+      case 'regular':
+      default:
+        // Para posts regulares, verificamos o tipo de mídia
+        switch (post.media_type) {
+          case 'audio':
+            return <Mic size={16} />;
+          case 'video':
+            return <Play size={16} />;
+          case 'image':
+            return <Image size={16} />;
+          default:
+            return null;
+        }
+    }
   };
 
   // Posicionar dropdown
@@ -116,11 +496,11 @@ const Post = ({ post }) => {
     if (openMenuId && menuRef.current && triggerRef.current) {
       const menu = menuRef.current;
       const trigger = triggerRef.current;
-      
+
       const triggerRect = trigger.getBoundingClientRect();
       const menuWidth = 200;
       const menuHeight = 200;
-      
+
       let top = triggerRect.bottom + 8;
       let left = triggerRect.right - menuWidth;
 
@@ -155,12 +535,75 @@ const Post = ({ post }) => {
 
     document.addEventListener('click', handleClickOutside);
     window.addEventListener('scroll', handleScroll, true);
-    
+
     return () => {
       document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('scroll', handleScroll, true);
     };
   }, [openMenuId]);
+
+  const renderComments = () => {
+    if (!showComments) return null;
+
+    return (
+      <div className="comments-section">
+        <form className="comment-input" onSubmit={handleAddComment}>
+          <img
+            src={user?.avatar ? Api.getImageUrl(user.avatar) : '/images/default-avatar.png'}
+            alt="Seu avatar"
+            className="comment-avatar"
+          />
+          <input
+            type="text"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Adicione um comentário..."
+            className="comment-field"
+          />
+          <button
+            type="submit"
+            className="comment-submit-button"
+            disabled={!newComment.trim()}
+          >
+            <Send size={15} />
+          </button>
+        </form>
+
+        {isLoadingComments ? (
+          <div className="comments-loading">Carregando comentários...</div>
+        ) : (
+          <div className="comments-list">
+            {comments?.map(comment => (
+              <div key={comment.id} className="comment">
+                <img
+                  src={comment.avatar ? Api.getImageUrl(comment.avatar) : '/images/default-avatar.png'}
+                  alt={comment.username}
+                  className="comment-avatar"
+                />
+                <div className="comment-content">
+                  <div className="comment-header">
+                    <span className="comment-author">{comment.username}</span>
+                    <span className="comment-time">{formatRelativeTime(comment.created_at)}</span>
+                  </div>
+                  <p className="comment-text">{comment.content}</p>
+                </div>
+                {(comment.is_owner === 1 || post.user_id === user.id) && (
+                  <button
+                    className="comment-delete-button"
+                    onClick={() => handleRemoveComment(comment.id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (!isVisible) return null;
 
   return (
     <>
@@ -168,18 +611,26 @@ const Post = ({ post }) => {
         {/* Post Header */}
         <header className="post-header">
           <div className="post-author">
-            <img 
-              src={post.author.avatar} 
-              alt={post.author.name}
+            <img
+              src={post.avatar?.includes('users/image') ? post.avatar : Api.getImageUrl(post.avatar)}
+              alt={post.username}
               className="author-avatar"
             />
             <div className="author-info">
-              <h3 className="author-name">{post.author.name}</h3>
-              <span className="post-time">{formatTime(post.createdAt)}</span>
+              <div className="author-name-container">
+                <h3 className="author-name">{post.username}</h3>
+                {post.is_paid && (
+                  <span className="post-paid-badge">
+                    <DollarSign size={14} />
+                  </span>
+                )}
+                {renderPostTypeIcon()}
+              </div>
+              <span className="post-time">{formatRelativeTime(post.created_at)}</span>
             </div>
           </div>
-          
-          <button 
+
+          <button
             ref={triggerRef}
             className="btn btn-ghost btn-icon"
             onClick={handleMenuToggle}
@@ -191,183 +642,134 @@ const Post = ({ post }) => {
 
         {/* Post Content */}
         <div className="post-content">
-          {post.description && (
-            <p className="post-description">{post.description}</p>
+          {post.content && (
+            <p className="post-description">{post.content}</p>
           )}
-          
+
           {/* Media Content */}
           <div className="post-media">
-            {post.type === 'image' && (
-              <img 
-                src={post.mediaUrl} 
-                alt="Post content"
-                className="post-image"
-              />
-            )}
-            
-            {post.type === 'video' && (
-              <div className="post-video-container">
-                <video 
-                  ref={videoRef}
-                  src={post.mediaUrl}
-                  className="post-video"
-                  controls={false}
-                  muted
-                  loop
-                />
-                <button 
-                  className="video-play-button"
-                  onClick={handlePlay}
-                >
-                  {isPlaying ? <Pause size={24} /> : <Play size={24} />}
-                </button>
-              </div>
-            )}
+            {renderPostContent()}
           </div>
         </div>
 
         {/* Post Actions */}
-        <div className="post-actions">
-          <div className="action-buttons">
+        {(!post.is_paid || post.allow_comments) && (
+          <div className="post-actions">
             <button 
-              className={`action-button ${isLiked ? 'liked' : ''}`}
+              className={`btn btn-ghost btn-icon ${isLiked ? 'liked' : ''}`}
               onClick={handleLike}
-              aria-label={isLiked ? 'Descurtir' : 'Curtir'}
             >
-              <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
-              <span>{likesCount}</span>
+              <Heart 
+                size={20} 
+                fill={isLiked ? "var(--primary-color)" : "none"} 
+                color={isLiked ? "var(--primary-color)" : "currentColor"}
+                strokeWidth={2}
+              />
+              {likesCount > 0 && <span>{likesCount}</span>}
             </button>
-            
-            <button 
+
+            {post.allow_comments && (
+              <button
+                className={`action-button ${showComments ? 'active' : ''}`}
+                onClick={() => setShowComments(!showComments)}
+              >
+                <MessageCircle size={24} />
+                <span>{commentsCount}</span>
+              </button>
+            )}
+
+            <button
               className="action-button"
-              onClick={() => setShowComments(!showComments)}
-              aria-label="Comentários"
-            >
-              <MessageCircle size={20} />
-              <span>{comments.length}</span>
-            </button>
-            
-            <button 
-              className="action-button gift-button"
               onClick={handleGiftClick}
-              aria-label="Enviar mimo"
             >
               <Gift size={20} />
-              <span>Mimo</span>
             </button>
-          </div>
-          
-          <button 
-            className={`btn btn-ghost btn-icon ${isSaved ? 'saved' : ''}`}
-            onClick={handleSave}
-            aria-label={isSaved ? 'Remover dos salvos' : 'Salvar post'}
-          >
-            <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
-          </button>
-        </div>
 
-        {/* Comments Section */}
-        {showComments && (
-          <div className="post-comments">
-            <div className="comments-header">
-              <h4>Comentários</h4>
-            </div>
-            
-            <form className="comment-input" onSubmit={handleAddComment}>
-              <img 
-                src="/default-avatar.png" 
-                alt="Seu avatar"
-                className="comment-avatar"
+            <button
+              className={`btn btn-ghost btn-icon ${isSaved ? 'saved' : ''}`}
+              onClick={handleSave}
+            >
+              <Bookmark 
+                size={20} 
+                fill={isSaved ? "var(--primary-color)" : "none"}
+                color={isSaved ? "var(--primary-color)" : "currentColor"}
               />
-              <input 
-                type="text" 
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Adicione um comentário..."
-                className="comment-field"
-              />
-              <button 
-                type="submit" 
-                className="btn btn-primary btn-sm"
-                disabled={!newComment.trim()}
-              >
-                Enviar
-              </button>
-            </form>
-            
-            <div className="comments-list">
-              {comments.map((comment) => (
-                <div key={comment.id} className="comment">
-                  <img 
-                    src={comment.author.avatar} 
-                    alt={comment.author.name}
-                    className="comment-avatar"
-                  />
-                  <div className="comment-content">
-                    <div className="comment-header">
-                      <span className="comment-author">{comment.author.name}</span>
-                      <span className="comment-time">{formatTime(comment.createdAt)}</span>
-                    </div>
-                    <p className="comment-text">{comment.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            </button>
           </div>
         )}
 
+        {renderComments()}
+
         {/* Dropdown Menu */}
-        {openMenuId && (
-          <div 
+        {openMenuId === post.id && (
+          <div
             ref={menuRef}
             className="post-dropdown-menu"
-            role="menu"
+            style={{
+              position: 'absolute',
+              top: triggerRef.current ? triggerRef.current.offsetTop + triggerRef.current.offsetHeight : 0,
+              right: triggerRef.current ? triggerRef.current.offsetLeft : 0,
+              zIndex: 1000
+            }}
           >
-            <button 
+            <button
               className="post-menu-item"
               onClick={(e) => handleMenuAction('copy', e)}
-              role="menuitem"
             >
               <Copy size={16} />
-              <span>Copiar link</span>
+              Copiar link
             </button>
-            <button 
+            <button
               className="post-menu-item"
               onClick={(e) => handleMenuAction('collection', e)}
-              role="menuitem"
             >
               <Bookmark size={16} />
-              <span>Adicionar à coleção</span>
+              {isSaved ? `Remover da coleção` : `Adicionar à coleção`}
             </button>
-            <button 
-              className="post-menu-item"
-              onClick={(e) => handleMenuAction('hide', e)}
-              role="menuitem"
-            >
-              <EyeOff size={16} />
-              <span>Ocultar post</span>
-            </button>
-            <div className="post-menu-divider"></div>
-            <button 
-              className="post-menu-item post-menu-item-danger"
-              onClick={(e) => handleMenuAction('report', e)}
-              role="menuitem"
-            >
-              <Flag size={16} />
-              <span>Denunciar post</span>
-            </button>
+            <div className="post-menu-divider" />
+            {post?.is_owner == 1 ? (
+              <button
+                className="post-menu-item  post-menu-item-danger"
+                onClick={(e) => handleMenuAction('delete', e)}
+              >
+                <Trash size={16} />
+                Deletar post
+              </button>
+            ) : (
+              <>
+                {/*<button
+                  className="post-menu-item"
+                  onClick={(e) => handleMenuAction('hide', e)}
+                >
+                  <EyeOff size={16} />
+                  Ocultar post
+                </button>*/}
+                <button
+                  className="post-menu-item post-menu-item-danger"
+                  onClick={(e) => handleMenuAction('report', e)}
+                >
+                  <Flag size={16} />
+                  Denunciar
+                </button>
+              </>
+            )}
           </div>
         )}
       </article>
 
       {/* Gift Modal */}
-      {showGiftModal && (
-        <GiftModal 
-          isOpen={showGiftModal}
-          onClose={() => setShowGiftModal(false)}
-          recipient={post.author}
-        />
-      )}
+      <GiftModal
+        isOpen={showGiftModal}
+        onClose={() => setShowGiftModal(false)}
+        post={post}
+      />
+
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        post={post}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </>
   );
 };

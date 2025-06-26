@@ -3,9 +3,7 @@ import './style.css';
 
 const LoadingScreen = () => {
   return (
-    <div>
-      Carregando...
-    </div>
+    <div></div>
   );
 };
 

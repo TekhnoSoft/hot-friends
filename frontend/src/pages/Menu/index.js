@@ -36,7 +36,7 @@ const Menu = () => {
     {
       icon: User,
       label: 'Meu Perfil',
-      path: '/profile',
+      path: '/myprofile',
       description: 'Visualizar e editar perfil'
     },
     {

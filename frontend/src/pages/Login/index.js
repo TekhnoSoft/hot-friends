@@ -203,15 +203,17 @@ const Login = () => {
           setErrors({ general: result.message || 'Usuário ou senha inválidos.' });
         }
       } else {
-        // Cadastro real
+
         const data = {
           name: formData.name,
+          username: formData.username?.replace("@", ""),
           email: formData.email,
           password: formData.password,
           age: Number(formData.age),
           gender: formData.gender,
           cpf: formData.cpf,
-          role: formData.role
+          role: formData.role,
+          acceptTerms: formData.acceptTerms
         };
         const result = await Api.register(data);
         if (result.success) {
@@ -403,7 +405,62 @@ const Login = () => {
                 </div>
               )}
 
-              {!isLogin && (
+              {isLogin ? (
+                <>
+                  <div className="loginpage-input-group">
+                    <label className="loginpage-label">Email <span style={{color: 'red'}}>*</span></label>
+                    <div className="loginpage-input-container">
+                      <Mail size={20} className="loginpage-input-icon" />
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="seu@email.com"
+                        className={`loginpage-input ${errors.email ? 'loginpage-input-error' : ''}`}
+                      />
+                    </div>
+                    {errors.email && (
+                      <span className="loginpage-error">{errors.email}</span>
+                    )}
+                  </div>
+
+                  <div className="loginpage-input-group">
+                    <label className="loginpage-label">Senha <span style={{color: 'red'}}>*</span></label>
+                    <div className="loginpage-input-container">
+                      <Lock size={20} className="loginpage-input-icon" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Sua senha"
+                        className={`loginpage-input ${errors.password ? 'loginpage-input-error' : ''}`}
+                      />
+                      <button
+                        type="button"
+                        className="loginpage-password-toggle"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <span className="loginpage-error">{errors.password}</span>
+                    )}
+                  </div>
+
+                  <div className="loginpage-forgot-password">
+                    <button 
+                      type="button" 
+                      className="loginpage-forgot-link"
+                      onClick={handleForgotPassword}
+                    >
+                      Esqueceu sua senha?
+                    </button>
+                  </div>
+                </>
+              ) : (
                 <>
                   <div className="loginpage-input-group">
                     <label className="loginpage-label">Nome de usuário <span style={{color: 'red'}}>*</span></label>
@@ -414,7 +471,7 @@ const Login = () => {
                         name="username"
                         value={formData.username}
                         onChange={handleInputChange}
-                        placeholder="seuusername"
+                        placeholder="username"
                         className={`loginpage-input loginpage-username-input ${errors.username ? 'loginpage-input-error' : ''}`}
                       />
                     </div>
@@ -518,18 +575,6 @@ const Login = () => {
                     Os campos marcados com <span style={{color: 'red'}}>*</span> são obrigatórios.
                   </div>
                 </>
-              )}
-
-              {isLogin && (
-                <div className="loginpage-forgot-password">
-                  <button 
-                    type="button" 
-                    className="loginpage-forgot-link"
-                    onClick={handleForgotPassword}
-                  >
-                    Esqueceu sua senha?
-                  </button>
-                </div>
               )}
 
               <button 

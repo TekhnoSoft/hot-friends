@@ -4,11 +4,11 @@ import { MainContext } from "./helpers/MainContext";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Api from './Api';
-import Utils from './Utils';
+import { setAuthToken, removeAuthToken } from './Utils';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Importação de páginas
-import { Login, Home, PageNotFound, Menu, Profile, Messages, Search } from './pages';
+import { Login, Home, PageNotFound, Menu, Profile, Messages, Search, Terms, Privacy, MyProfile } from './pages';
 
 // Importação de componentes
 import { LoadingScreen } from './components';
@@ -63,6 +63,7 @@ function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     loadUserData();
@@ -82,7 +83,7 @@ function App() {
       }
       
       // Configura o token nos headers para as requisições
-      Utils.setAuthToken(token);
+      setAuthToken(token);
       
       // Verifica se o token é válido
       const authResponse = await Api.auth();
@@ -91,7 +92,7 @@ function App() {
         // Busca os dados do usuário
         const userResponse = await Api.get();
         
-        if (userResponse.status === 200) {
+        if (userResponse.status === 200 && userResponse.data.success) {
           setAuthenticated(true);
           setUser(userResponse.data.data);
         } else {
@@ -110,24 +111,29 @@ function App() {
 
   const login = (token, userData) => {
     localStorage.setItem("HOTFRIENDS_ACCESS_TOKEN", token);
-    Utils.setAuthToken(token);
+    setAuthToken(token);
     setAuthenticated(true);
     setUser(userData);
+    // Força atualização dos dados do usuário após login
+    loadUserData();
   };
 
   const logout = (reloadPage = false, callback) => {
     localStorage.removeItem("HOTFRIENDS_ACCESS_TOKEN");
-    Utils.removeAuthToken();
+    removeAuthToken();
     setAuthenticated(false);
     setUser(null);
-    
     if (callback) {
       callback();
     }
-    
+    // Redireciona para login sem recarregar a página
     if (reloadPage) {
-      window.location.reload();
+      window.location.href = "/login";
     }
+  };
+
+  const refreshFeed = () => {
+    setRefreshKey(prev => prev + 1);
   };
 
   // Valores do contexto
@@ -138,12 +144,25 @@ function App() {
     loading,
     login,
     logout,
-    refreshUserData: loadUserData
+    refreshUserData: loadUserData,
+    refreshFeed: refreshFeed,
+    refreshKey
   };
+
+  if (loading) {
+    return (
+      <div className="app-loading">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <MainContext.Provider value={contextValue}>
-      <GoogleOAuthProvider clientId="390488374513-a7tu5plian18qoq2de6g786ucavbk5sd.apps.googleusercontent.com">
+      <GoogleOAuthProvider clientId="788394079086-t5isagtonb8iddmocimghl1tbahvd4l6.apps.googleusercontent.com">
         <Router>
           <Routes>
             {/* Rotas públicas */}
@@ -156,43 +175,60 @@ function App() {
               } 
             />
             <Route 
+              path="/terms" 
+              element={<Terms />} 
+            />
+            <Route 
+              path="/privacy" 
+              element={<Privacy />} 
+            />
+            {/* Rotas privadas */}
+            <Route 
               path="/" 
               element={
-                <PublicRoute restricted>
+                <PrivateRoute>
                   <Home />
-                </PublicRoute>
+                </PrivateRoute>
               } 
             />
             <Route 
               path="/menu" 
               element={
-                <PublicRoute restricted>
+                <PrivateRoute>
                   <Menu />
-                </PublicRoute>
+                </PrivateRoute>
               } 
             />
             <Route 
               path="/profile" 
               element={
-                <PublicRoute restricted>
+                <PrivateRoute>
                   <Profile />
-                </PublicRoute>
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/myprofile" 
+              element={
+                <PrivateRoute>
+                  <MyProfile />
+                </PrivateRoute>
               } 
             />
             <Route 
               path="/search" 
               element={
-                <PublicRoute restricted>
+                <PrivateRoute>
                   <Search />
-                </PublicRoute>
+                </PrivateRoute>
               } 
             />
             <Route 
               path="/messages" 
               element={
-                <PublicRoute restricted>
+                <PrivateRoute>
                   <Messages />
-                </PublicRoute>
+                </PrivateRoute>
               } 
             />
             {/* Outras rotas privadas que serão adicionadas no futuro */}

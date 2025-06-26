@@ -20,17 +20,64 @@ const sqlConfig = {
   options: {
     encrypt: true,             // Para conexões Azure
     trustServerCertificate: true, // Mudar para false em produção
-    enableArithAbort: true,
+    useUTC: false,
     connectionTimeout: 15000,  // Timeout de conexão em ms
     requestTimeout: 15000      // Timeout de requisição em ms
   }
 };
+
+// Configuração global para garantir que o SQL Server use Unicode
+sql.on('error', err => {
+  console.error('SQL Server error:', err);
+});
 
 // Classe para gerenciar o pool de conexões
 class Database {
   constructor() {
     this.pool = null;
     this.connected = false;
+    this.init();
+  }
+
+  // Inicializa o banco de dados
+  async init() {
+    try {
+      await this.connect();
+      await this.updateImageColumns();
+    } catch (err) {
+      console.error('Erro na inicialização do banco:', err);
+    }
+  }
+
+  // Atualiza as colunas de imagem para um tamanho maior
+  async updateImageColumns() {
+    try {
+      // Verifica se as colunas precisam ser alteradas
+      const result = await this.query(`
+        SELECT COLUMN_NAME, CHARACTER_MAXIMUM_LENGTH
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'Users'
+        AND COLUMN_NAME IN ('avatar', 'cover_image')
+      `);
+
+      const needsUpdate = result.recordset.some(col => 
+        (col.CHARACTER_MAXIMUM_LENGTH || 0) < 500
+      );
+
+      if (needsUpdate) {
+        // Altera o tamanho das colunas
+        await this.query(`
+          ALTER TABLE Users
+          ALTER COLUMN avatar VARCHAR(500);
+          
+          ALTER TABLE Users
+          ALTER COLUMN cover_image VARCHAR(500);
+        `);
+        console.log('Colunas de imagem atualizadas com sucesso');
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar colunas de imagem:', err);
+    }
   }
 
   // Inicializa o pool de conexões

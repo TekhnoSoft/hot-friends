@@ -5,227 +5,146 @@ import Sidebar from '../../components/Sidebar';
 import Feed from '../../components/Feed';
 import RecommendedProfiles from '../../components/RecommendedProfiles';
 import BottomTabNavigation from '../../components/BottomTabNavigation';
+import Api from '../../Api';
 import './style.css';
 
 const Home = () => {
-  const { user } = useMainContext();
+  const { user, refreshKey } = useMainContext();
   const [posts, setPosts] = useState([]);
   const [recommendedProfiles, setRecommendedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  // Mock data - substitua por chamadas reais da API
-  const mockPosts = [
-    {
-      id: 1,
-      author: {
-        name: "BAD M**",
-        avatar: "https://picsum.photos/44/44?random=1"
-      },
-      description: "Novo conteúdo exclusivo disponível! 🔥",
-      type: "image",
-      mediaUrl: "https://picsum.photos/600/400?random=1",
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 horas atrás
-      likesCount: 142,
-      commentsCount: 23,
-      isLiked: false,
-      comments: [
-        {
-          author: { name: "João", avatar: "https://picsum.photos/32/32?random=10" },
-          text: "Incrível! 😍",
-          createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
-        }
-      ]
-    },
-    {
-      id: 2,
-      author: {
-        name: "GABY",
-        avatar: "https://picsum.photos/44/44?random=2"
-      },
-      description: "Aproveitando o dia lindo! ☀️",
-      type: "video",
-      mediaUrl: "https://picsum.photos/600/400?random=2",
-      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 horas atrás
-      likesCount: 89,
-      commentsCount: 12,
-      isLiked: true,
-      comments: []
-    },
-    {
-      id: 3,
-      author: {
-        name: "Clara EX BBB",
-        avatar: "https://picsum.photos/44/44?random=3"
-      },
-      description: "Obrigada pelo carinho de vocês! ❤️",
-      type: "image",
-      mediaUrl: "https://picsum.photos/600/400?random=3",
-      createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 horas atrás
-      likesCount: 256,
-      commentsCount: 45,
-      isLiked: false,
-      comments: [
-        {
-          author: { name: "Maria", avatar: "https://picsum.photos/32/32?random=11" },
-          text: "Você é incrível! ❤️",
-          createdAt: new Date(Date.now() - 7 * 60 * 60 * 1000)
-        },
-        {
-          author: { name: "Pedro", avatar: "https://picsum.photos/32/32?random=12" },
-          text: "Sempre arrasando! 🔥",
-          createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
-        }
-      ]
-    },
-    {
-      id: 4,
-      author: {
-        name: "Marina",
-        avatar: "https://picsum.photos/44/44?random=4"
-      },
-      description: "Sessão de fotos de hoje! O que acharam? 📸✨",
-      type: "image",
-      mediaUrl: "https://picsum.photos/600/400?random=4",
-      createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 horas atrás
-      likesCount: 78,
-      commentsCount: 15,
-      isLiked: false,
-      comments: []
-    },
-    {
-      id: 5,
-      author: {
-        name: "Luana",
-        avatar: "https://picsum.photos/44/44?random=5"
-      },
-      description: "Bom dia, meus amores! Como estão? 🌅💕",
-      type: "image",
-      mediaUrl: "https://picsum.photos/600/400?random=5",
-      createdAt: new Date(Date.now() - 18 * 60 * 60 * 1000), // 18 horas atrás
-      likesCount: 203,
-      commentsCount: 31,
-      isLiked: true,
-      comments: [
-        {
-          author: { name: "Ana", avatar: "https://picsum.photos/32/32?random=13" },
-          text: "Bom dia, linda! 🌸",
-          createdAt: new Date(Date.now() - 17 * 60 * 60 * 1000)
-        }
-      ]
-    }
-  ];
-
-  const mockProfiles = [
-    {
-      id: 1,
-      name: "feercampos",
-      username: "feercampos",
-      avatar: "https://picsum.photos/40/40?random=201",
-      coverImage: "https://picsum.photos/300/120?random=301",
-      isVerified: true
-    },
-    {
-      id: 2,
-      name: "BAD MI",
-      username: "badmi",
-      avatar: "https://picsum.photos/40/40?random=202",
-      coverImage: "https://picsum.photos/300/120?random=302",
-      isVerified: false
-    },
-    {
-      id: 3,
-      name: "Mel Hotw...",
-      username: "melhotw",
-      avatar: "https://picsum.photos/40/40?random=203",
-      coverImage: "https://picsum.photos/300/120?random=303",
-      isVerified: true
-    },
-    {
-      id: 4,
-      name: "Marina Silva",
-      username: "marina_s",
-      avatar: "https://picsum.photos/40/40?random=204",
-      coverImage: "https://picsum.photos/300/120?random=304",
-      isVerified: false
-    },
-    {
-      id: 5,
-      name: "Luana Costa",
-      username: "luana_c",
-      avatar: "https://picsum.photos/40/40?random=205",
-      coverImage: "https://picsum.photos/300/120?random=305",
-      isVerified: true
-    },
-    {
-      id: 6,
-      name: "Camila Santos",
-      username: "cami_santos",
-      avatar: "https://picsum.photos/40/40?random=206",
-      coverImage: "https://picsum.photos/300/120?random=306",
-      isVerified: false
-    },
-    {
-      id: 1,
-      name: "feercampos",
-      username: "feercampos",
-      avatar: "https://picsum.photos/40/40?random=201",
-      coverImage: "https://picsum.photos/300/120?random=301",
-      isVerified: true
-    },
-    {
-      id: 2,
-      name: "BAD MI",
-      username: "badmi",
-      avatar: "https://picsum.photos/40/40?random=202",
-      coverImage: "https://picsum.photos/300/120?random=302",
-      isVerified: false
-    },
-    {
-      id: 3,
-      name: "Mel Hotw...",
-      username: "melhotw",
-      avatar: "https://picsum.photos/40/40?random=203",
-      coverImage: "https://picsum.photos/300/120?random=303",
-      isVerified: true
-    },
-    {
-      id: 4,
-      name: "Marina Silva",
-      username: "marina_s",
-      avatar: "https://picsum.photos/40/40?random=204",
-      coverImage: "https://picsum.photos/300/120?random=304",
-      isVerified: false
-    },
-    {
-      id: 5,
-      name: "Luana Costa",
-      username: "luana_c",
-      avatar: "https://picsum.photos/40/40?random=205",
-      coverImage: "https://picsum.photos/300/120?random=305",
-      isVerified: true
-    },
-  ];
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadPosts = useCallback(async (pageNumber = 1) => {
     try {
-      // Simula carregamento da API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setPosts(mockPosts);
-      setRecommendedProfiles(mockProfiles);
+      const response = await Api.getFeed(pageNumber);
+      if (response.success && Array.isArray(response.posts)) {
+        if (pageNumber === 1) {
+          setPosts(response.posts);
+        } else {
+          setPosts(prev => [...prev, ...response.posts]);
+        }
+        setHasMore(response.posts.length > 0);
+      }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Erro ao carregar posts:', error);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const loadRecommendedProfiles = useCallback(async () => {
+    try {
+      // Aqui você implementaria a chamada para a API de perfis recomendados
+      // Por enquanto, vamos manter alguns dados mockados
+      const mockProfiles = [
+        {
+          id: 1,
+          name: "feercampos",
+          username: "feercampos",
+          avatar: "https://picsum.photos/40/40?random=201",
+          coverImage: "https://picsum.photos/300/120?random=301",
+          isVerified: true
+        },
+        {
+          id: 2,
+          name: "BAD MI",
+          username: "badmi",
+          avatar: "https://picsum.photos/40/40?random=202",
+          coverImage: "https://picsum.photos/300/120?random=302",
+          isVerified: false
+        },
+        {
+          id: 3,
+          name: "Mel Hotw...",
+          username: "melhotw",
+          avatar: "https://picsum.photos/40/40?random=203",
+          coverImage: "https://picsum.photos/300/120?random=303",
+          isVerified: true
+        },
+        {
+          id: 1,
+          name: "feercampos",
+          username: "feercampos",
+          avatar: "https://picsum.photos/40/40?random=201",
+          coverImage: "https://picsum.photos/300/120?random=301",
+          isVerified: true
+        },
+        {
+          id: 2,
+          name: "BAD MI",
+          username: "badmi",
+          avatar: "https://picsum.photos/40/40?random=202",
+          coverImage: "https://picsum.photos/300/120?random=302",
+          isVerified: false
+        },
+        {
+          id: 3,
+          name: "Mel Hotw...",
+          username: "melhotw",
+          avatar: "https://picsum.photos/40/40?random=203",
+          coverImage: "https://picsum.photos/300/120?random=303",
+          isVerified: true
+        },
+        {
+          id: 1,
+          name: "feercampos",
+          username: "feercampos",
+          avatar: "https://picsum.photos/40/40?random=201",
+          coverImage: "https://picsum.photos/300/120?random=301",
+          isVerified: true
+        },
+        {
+          id: 2,
+          name: "BAD MI",
+          username: "badmi",
+          avatar: "https://picsum.photos/40/40?random=202",
+          coverImage: "https://picsum.photos/300/120?random=302",
+          isVerified: false
+        },
+        {
+          id: 3,
+          name: "Mel Hotw...",
+          username: "melhotw",
+          avatar: "https://picsum.photos/40/40?random=203",
+          coverImage: "https://picsum.photos/300/120?random=303",
+          isVerified: true
+        },
+      ];
+      setRecommendedProfiles(mockProfiles);
+    } catch (error) {
+      console.error('Erro ao carregar perfis recomendados:', error);
+    }
+  }, []);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadPosts(1),
+        loadRecommendedProfiles()
+      ]);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadPosts, loadRecommendedProfiles]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadPosts(nextPage);
+    }
+  }, [loading, hasMore, page, loadPosts]);
+
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, refreshKey]);
 
-  if (loading) {
+  if (loading && !posts.length) {
     return (
       <div className="home-loading">
         <div className="loading-spinner">
@@ -246,7 +165,12 @@ const Home = () => {
           
           <main className="main-content">
             <RecommendedProfiles profiles={recommendedProfiles} />
-            <Feed posts={posts} />
+            <Feed 
+              posts={posts} 
+              onLoadMore={handleLoadMore}
+              hasMore={hasMore}
+              loading={loading}
+            />
           </main>
         </div>
       </div>
