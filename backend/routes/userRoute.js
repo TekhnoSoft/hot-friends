@@ -5,25 +5,31 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const { validateOrigin } = require('../middlewares/CorsMiddleware');
 const { validateToken } = require('../middlewares/AuthMiddleware');
 
 const db = require('../database');
 
+// Função para determinar o caminho da pasta de upload
+function getUploadPath() {
+    const isWindows = os.platform() === 'win32';
+    const rootPath = isWindows ? 'C:\\' : '/';
+    const uploadPath = path.join(rootPath, 'upload');
+    
+    // Cria o diretório se não existir
+    if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    
+    return uploadPath;
+}
+
 // Configuração do Multer para upload de arquivos
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        let type = req.body && req.body.type ? req.body.type.toLowerCase() : '';
-
-        const uploadPath = path.join(__dirname, '..', 'upload', type);
-        
-        // Cria o diretório se não existir
-        if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        
-        console.log('Upload type:', type);
+        const uploadPath = getUploadPath();
         console.log('Upload path:', uploadPath);
         cb(null, uploadPath);
     },

@@ -6,11 +6,27 @@ const { v4: uuidv4 } = require('uuid');
 const sql = require('mssql');
 const { validateToken} = require('../middlewares/AuthMiddleware');
 const db = require('../database');
+const os = require('os');
+const fs = require('fs');
+
+// Função para determinar o caminho da pasta de upload
+function getUploadPath() {
+    const isWindows = os.platform() === 'win32';
+    const rootPath = isWindows ? 'C:\\' : '/';
+    const uploadPath = path.join(rootPath, 'upload');
+    
+    // Cria o diretório se não existir
+    if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    
+    return uploadPath;
+}
 
 // Configuração do Multer para upload de arquivos
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadPath = path.join(__dirname, '..', 'upload');
+        const uploadPath = getUploadPath();
         cb(null, uploadPath);
     },
     filename: function (req, file, cb) {
@@ -81,7 +97,7 @@ router.post('/upload', validateToken, upload.single('file'), async (req, res) =>
 // Servir arquivos de mídia
 router.get('/media/:filename', (req, res) => {
     const { filename } = req.params;
-    const filePath = path.join(__dirname, '..', 'upload', filename);
+    const filePath = path.join(getUploadPath(), filename);
     res.sendFile(filePath);
 });
 
