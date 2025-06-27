@@ -432,7 +432,7 @@ const Login = () => {
     if (!isOpen) return null;
 
     return (
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={true} onClose={onClose}>
         <div className="google-modal">
           <h2>
             {googleData?.isNewUser 
