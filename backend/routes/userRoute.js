@@ -329,11 +329,57 @@ router.post('/upload', validateToken, (req, res) => {
 router.get('/image/:type/:filename', async (req, res) => {
     try {
         const { type, filename } = req.params;
-        const imagePath = path.join(__dirname, '..', 'upload', type, filename);
-
-        // Verifica se o arquivo existe
-        if (!fs.existsSync(imagePath)) {
-            return res.status(404).json({ success: false, message: 'Imagem não encontrada.' });
+        
+        // Possíveis caminhos para o volume no container (pasta 'upload' com subpasta 'type')
+        const possibleBasePaths = [
+            '/app/upload',
+            '/upload',
+            './upload',
+            '/app/volumes/upload',
+            '/data/upload',
+            path.join(__dirname, '..', 'upload'),
+            path.join(process.cwd(), 'upload'),
+            path.join(__dirname, 'upload'),
+        ];
+        
+        console.log(`Procurando imagem: ${type}/${filename}`);
+        console.log('Diretório de trabalho atual:', process.cwd());
+        console.log('__dirname:', __dirname);
+        
+        // Função para tentar encontrar o arquivo em diferentes locais
+        const findImageFile = async (basePaths) => {
+            for (const basePath of basePaths) {
+                const fullPath = path.resolve(basePath, type, filename);
+                console.log(`Tentando: ${fullPath}`);
+                
+                try {
+                    // Verifica se o arquivo existe de forma assíncrona
+                    await fs.promises.access(fullPath, fs.constants.F_OK);
+                    
+                    // Verifica se é um arquivo
+                    const stats = await fs.promises.stat(fullPath);
+                    if (stats.isFile()) {
+                        console.log('Imagem encontrada em:', fullPath);
+                        return fullPath;
+                    }
+                } catch (err) {
+                    // Continua tentando outros caminhos
+                    continue;
+                }
+            }
+            return null;
+        };
+        
+        const imagePath = await findImageFile(possibleBasePaths);
+        
+        if (!imagePath) {
+            console.error(`Imagem não encontrada: ${type}/${filename}`);
+            console.error('Caminhos pesquisados:', possibleBasePaths.map(p => path.resolve(p, type, filename)));
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Imagem não encontrada.',
+                searchedPaths: possibleBasePaths.map(p => path.resolve(p, type, filename))
+            });
         }
 
         // Define o tipo de conteúdo baseado na extensão do arquivo
@@ -342,14 +388,24 @@ router.get('/image/:type/:filename', async (req, res) => {
             '.jpg': 'image/jpeg',
             '.jpeg': 'image/jpeg',
             '.png': 'image/png',
-            '.gif': 'image/gif'
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.svg': 'image/svg+xml'
         };
         
         res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 ano
         
         // Envia o arquivo
-        res.sendFile(imagePath);
+        res.sendFile(imagePath, (err) => {
+            if (err) {
+                console.error('Erro ao servir imagem:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ success: false, message: 'Erro ao carregar imagem.' });
+                }
+            }
+        });
+        
     } catch (err) {
         console.error('Erro ao servir imagem:', err);
         res.status(500).json({ success: false, message: 'Erro ao carregar imagem.' });
