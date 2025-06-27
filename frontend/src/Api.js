@@ -471,6 +471,38 @@ const Api = {
         } catch (error) {
             throw error;
         }
+    },
+
+    // Buscar perfil de usuário por username
+    getProfile: async (username) => {
+        try {
+            const response = await axios.get(`${API_BASE}/users/profile`, {
+                ...Environment.HEADERS,
+                params: { username }
+            });
+            if (response.data.success) {
+                // Processa os dados do usuário para garantir que as URLs das imagens estejam corretas
+                const userData = response.data.data;
+                if (userData.avatar) {
+                    userData.avatar = Api.getImageUrl(userData.avatar);
+                }
+                if (userData.coverImage) {
+                    userData.coverImage = Api.getImageUrl(userData.coverImage);
+                }
+                // Processa as URLs das imagens dos posts
+                if (userData.posts) {
+                    userData.posts = userData.posts.map(post => ({
+                        ...post,
+                        mediaUrl: Api.getImageUrl(post.mediaUrl)
+                    }));
+                }
+                return { ...response, data: { ...response.data, data: userData } };
+            }
+            return response;
+        } catch (error) {
+            console.error('Erro ao buscar perfil:', error);
+            throw error.response?.data || error;
+        }
     }
 }
 

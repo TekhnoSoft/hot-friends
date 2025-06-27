@@ -768,8 +768,7 @@
 .profilepage-subscription-btn:focus,
 .profilepage-tab:focus,
 .profilepage-bottom-tab:focus {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
+  
 }
 
 .profilepage-menu-item:focus {
@@ -1028,3 +1027,4 @@
     transform: translate(-50%, -50%);
   }
 }
+

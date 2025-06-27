@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { 
   ArrowLeft, 
   MoreHorizontal, 
@@ -23,87 +23,76 @@ import {
   User,
   Image,
   Video,
-  Lock
+  Lock,
+  X
 } from 'lucide-react';
 import Post from '../../components/Post';
 import GiftModal from '../../components/GiftModal';
+import PaymentModal from '../../components/PaymentModal';
+import Modal from '../../components/Modal';
 import BottomTabNavigation from '../../components/BottomTabNavigation';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import Api from '../../Api';
 
 import './style.css';
+import Environment from '../../Environment';
+import { MainContext } from '../../helpers/MainContext';
 
 const Profile = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const username = searchParams.get('username');
+  const { user } = useContext(MainContext);
 
   const [activeTab, setActiveTab] = useState('posts');
   const [activeMediaFilter, setActiveMediaFilter] = useState('all');
   const [isFollowing, setIsFollowing] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [activeBottomTab, setActiveBottomTab] = useState('profile');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [profileData, setProfileData] = useState(null);
 
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
 
-  // Mock data
-  const profileData = {
-    id: 1,
-    name: 'Ana Schultz',
-    username: 'anaschultz',
-    avatar: 'https://picsum.photos/120/120?random=1',
-    coverImage: 'https://picsum.photos/800/300?random=2',
-    bio: 'Se chegou até aqui é porque já me conhece e tem curiosidade né?! Então assina meu privacy pra ver mais conteúdo exclusivo 🔥',
-    location: 'São Paulo, Brasil',
-    website: 'https://anaschultz.com',
-    joinDate: '2023-01-15',
-    isVerified: true,
-    stats: {
-      followers: 509,
-      following: 266,
-      likes: 73100,
-      posts: 692,
-      media: {
-        total: 775,
-        photos: 456,
-        videos: 219,
-        paid: 100
+  useEffect(() => {
+    if (username) {
+      if (username === user.username) {
+        navigate('/myprofile');
       }
-    },
-    subscriptions: [
-      { duration: '1 mês', price: 19.90, discount: null },
-      { duration: '3 meses', price: 29.85, discount: 50 },
-      { duration: '6 meses', price: 59.70, discount: 50 }
-    ]
-  };
+      loadProfileData();
+    } else {
+      setError('Username não fornecido');
+      setLoading(false);
+    }
+  }, [username]);
 
-  const mockPosts = Array.from({ length: 12 }, (_, i) => ({
-    id: i + 1,
-    author: {
-      name: profileData.name,
-      username: profileData.username,
-      avatar: profileData.avatar,
-      isVerified: profileData.isVerified
-    },
-    description: i % 3 === 0 ? 'Novo conteúdo exclusivo para vocês! 💕' : 
-                 i % 2 === 0 ? 'Obrigada pelo carinho de sempre! ❤️' : 
-                 'Mais um dia incrível! Quem mais está animado? 🌟',
-    type: i % 4 === 0 ? 'video' : 'image',
-    isPaid: Math.random() > 0.7,
-    mediaUrl: i % 4 === 0 ? 
-      'https://sample-videos.com/zip/10/mp4/SampleVideo_360x240_1mb.mp4' :
-      `https://picsum.photos/400/500?random=${i + 10}`,
-    createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-    likesCount: Math.floor(Math.random() * 1000) + 50,
-    commentsCount: Math.floor(Math.random() * 50) + 5,
-    isLiked: Math.random() > 0.5,
-    isSaved: Math.random() > 0.7,
-    comments: []
-  }));
+  const loadProfileData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await Api.getProfile(username);
+      if (response.data.success) {
+        setProfileData(response.data.data);
+      } else {
+        setError(response.data.message || 'Erro ao carregar perfil');
+      }
+    } catch (err) {
+      setError(err.message || 'Erro ao carregar perfil');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGoBack = () => {
     navigate(-1);
-  }
+  };
 
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
@@ -124,12 +113,12 @@ const Profile = () => {
 
   const handleMenuAction = (action, event) => {
     event.stopPropagation();
-    console.log(`Action: ${action} for profile:`, profileData.username);
+    console.log(`Action: ${action} for profile:`, profileData?.username);
     setOpenMenuId(null);
     
     switch(action) {
       case 'share':
-        navigator.clipboard.writeText(`${window.location.origin}/profile/${profileData.username}`);
+        navigator.clipboard.writeText(`${window.location.origin}/profile?username=${profileData?.username}`);
         console.log('Link do perfil copiado!');
         break;
       case 'addFriend':
@@ -152,48 +141,49 @@ const Profile = () => {
     setActiveMediaFilter(filter);
   };
 
+  const handleMediaClick = (media) => {
+    if (media.is_paid) {
+      setSelectedMedia(media);
+      setShowPaymentModal(true);
+    } else {
+      setSelectedMedia(media);
+      setShowMediaModal(true);
+    }
+  };
+
   const getFilteredMedia = () => {
-    let filtered = mockPosts.filter(post => post.type === 'image' || post.type === 'video');
+    if (!profileData?.posts) return [];
+    
+    let filtered = profileData.posts.filter(post => post.media_type === 'image' || post.media_type === 'video');
     
     switch(activeMediaFilter) {
       case 'photos':
-        return filtered.filter(post => post.type === 'image');
+        return filtered.filter(post => post.media_type === 'image');
       case 'videos':
-        return filtered.filter(post => post.type === 'video');
+        return filtered.filter(post => post.media_type === 'video');
       case 'paid':
-        return filtered.filter(post => post.isPaid);
+        return filtered.filter(post => post.is_paid);
       default:
         return filtered;
     }
   };
 
   const getFilterCount = (filter) => {
+    if (!profileData?.posts) return 0;
+    
+    const posts = profileData.posts;
     switch(filter) {
       case 'all':
-        return profileData.stats.media.total;
+        return posts.filter(post => post.media_type === 'image' || post.media_type === 'video').length;
       case 'photos':
-        return profileData.stats.media.photos;
+        return posts.filter(post => post.media_type === 'image').length;
       case 'videos':
-        return profileData.stats.media.videos;
+        return posts.filter(post => post.media_type === 'video').length;
       case 'paid':
-        return profileData.stats.media.paid;
+        return posts.filter(post => post.is_paid).length;
       default:
         return 0;
     }
-  };
-
-  const formatNumber = (num) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
-    return num.toString();
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { 
-      month: 'long', 
-      year: 'numeric' 
-    });
   };
 
   // Posicionar dropdown
@@ -247,6 +237,43 @@ const Profile = () => {
     };
   }, [openMenuId]);
 
+  if (loading) {
+    return (
+      <div className="home-loading">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="profilepage-error">
+        <h2>Erro ao carregar perfil</h2>
+        <p>{error}</p>
+        <button onClick={handleGoBack} className="profilepage-back-btn">
+          <ArrowLeft size={24} />
+          Voltar
+        </button>
+      </div>
+    );
+  }
+
+  if (!profileData) {
+    return (
+      <div className="profilepage-not-found">
+        <h2>Perfil não encontrado</h2>
+        <p>O perfil que você está procurando não existe ou foi removido.</p>
+        <button onClick={handleGoBack} className="profilepage-back-btn">
+          <ArrowLeft size={24} />
+          Voltar
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="profilepage-container">
@@ -271,7 +298,7 @@ const Profile = () => {
         {/* Cover Image */}
         <div className="profilepage-cover">
           <img 
-            src={profileData.coverImage} 
+            src={profileData.coverImage || 'https://picsum.photos/800/300?random=2'} 
             alt="Cover" 
             className="profilepage-cover-image"
           />
@@ -282,7 +309,7 @@ const Profile = () => {
           <div className="profilepage-avatar-section">
             <div className="profilepage-avatar-container">
               <img 
-                src={profileData.avatar} 
+                src={profileData.avatar || 'https://picsum.photos/120/120?random=1'} 
                 alt={profileData.name}
                 className="profilepage-avatar"
               />
@@ -320,54 +347,55 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="profilepage-details">
-            <div className="profilepage-name-section">
-              <h2 className="profilepage-name">
-                {profileData.name}
-                {profileData.isVerified && (
-                  <span className="profilepage-verification">✓</span>
-                )}
-              </h2>
-              <span className="profilepage-username">@{profileData.username}</span>
-            </div>
+          <div className="profilepage-name-section">
+            <h2 className="profilepage-name">
+              {profileData.name}
+              {profileData.isVerified && (
+                <span className="profilepage-verification">✓</span>
+              )}
+            </h2>
+            <span className="profilepage-username">@{profileData.username}</span>
+          </div>
 
-            <div className="profilepage-bio">
-              <p>{profileData.bio}</p>
-            </div>
+          <div className="profilepage-bio">
+            <p>{profileData.bio}</p>
+          </div>
 
-            <div className="profilepage-meta">
+          <div className="profilepage-meta">
+            {profileData.location && (
               <div className="profilepage-meta-item">
                 <MapPin size={16} />
                 <span>{profileData.location}</span>
               </div>
+            )}
+            {profileData.website && (
               <div className="profilepage-meta-item">
                 <LinkIcon size={16} />
-                <a href={profileData.website}  rel="noopener noreferrer">
-                  {profileData.website.replace('https://', '')}
+                <a href={profileData.website} target="_blank" rel="noopener noreferrer">
+                  {profileData.website.replace(/^https?:\/\//, '')}
                 </a>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Subscriptions */}
-        <div className="profilepage-subscriptions">
+
+         {/* Subscriptions */}
+         <div className="profilepage-subscriptions">
           <h3 className="profilepage-subscriptions-title">Assinaturas</h3>
           <div className="profilepage-subscriptions-list">
-            {profileData.subscriptions.map((sub, index) => (
-              <div key={index} className="profilepage-subscription-card">
+            
+              <div className="profilepage-subscription-card">
                 <div className="profilepage-subscription-info">
-                  <span className="profilepage-subscription-duration">{sub.duration}</span>
-                  {sub.discount && (
-                    <span className="profilepage-subscription-discount">{sub.discount}% OFF</span>
-                  )}
+                  <span className="profilepage-subscription-duration">3 meses</span>
+                  <span className="profilepage-subscription-discount">10% OFF</span>
                 </div>
                 <div className="profilepage-subscription-price">
-                  R$ {sub.price.toFixed(2).replace('.', ',')}
+                  R$ 10,00
                 </div>
                 <button className="profilepage-subscription-btn">Assinar</button>
               </div>
-            ))}
+          
           </div>
         </div>
 
@@ -379,7 +407,7 @@ const Profile = () => {
           >
             <Grid3X3 size={20} />
             <span>Postagens</span>
-            <span className="profilepage-tab-count">{profileData.stats.posts}</span>
+            <span className="profilepage-tab-count">{profileData.posts_count}</span>
           </button>
           <button 
             className={`profilepage-tab ${activeTab === 'media' ? 'profilepage-tab-active' : ''}`}
@@ -387,7 +415,7 @@ const Profile = () => {
           >
             <Play size={20} />
             <span>Mídias</span>
-            <span className="profilepage-tab-count">{profileData.stats.media.total}</span>
+            <span className="profilepage-tab-count">{getFilterCount('all')}</span>
           </button>
         </div>
 
@@ -429,23 +457,34 @@ const Profile = () => {
         <div className="profilepage-content">
           {activeTab === 'posts' && (
             <div className="profilepage-posts">
-              {mockPosts.map(post => (
+              {profileData.posts?.map(post => (
                 <Post key={post.id} post={post} />
               ))}
+              {profileData.posts?.length === 0 && (
+                <div className="profilepage-empty-state">
+                  <Grid3X3 size={48} />
+                  <h3>Nenhuma postagem</h3>
+                  <p>Este usuário ainda não fez nenhuma postagem.</p>
+                </div>
+              )}
             </div>
           )}
           
           {activeTab === 'media' && (
             <div className="profilepage-media-grid">
               {getFilteredMedia().map(post => (
-                <div key={post.id} className="profilepage-media-item">
-                  {post.type === 'video' ? (
+                <div 
+                  key={post.id} 
+                  className="profilepage-media-item"
+                  onClick={() => handleMediaClick(post)}
+                >
+                  {post.media_type === 'video' ? (
                     <div className="profilepage-media-video">
-                      <img src={`https://picsum.photos/300/300?random=${post.id + 100}`} alt="" />
+                      <video src={`${Environment.API_BASE}/posts/media/${	post.media_url}`} alt="" />
                       <div className="profilepage-media-video-overlay">
                         <Play size={24} />
                       </div>
-                      {post.isPaid && (
+                      {post.is_paid && (
                         <div className="profilepage-media-paid-badge">
                           <Lock size={16} />
                         </div>
@@ -453,8 +492,8 @@ const Profile = () => {
                     </div>
                   ) : (
                     <div className="profilepage-media-photo">
-                      <img src={post.mediaUrl} alt="" className="profilepage-media-image" />
-                      {post.isPaid && (
+                      <img src={`${Environment.API_BASE}/posts/media/${post.media_url}`} alt="" className="profilepage-media-image" />
+                      {post.is_paid && (
                         <div className="profilepage-media-paid-badge">
                           <Lock size={16} />
                         </div>
@@ -463,6 +502,13 @@ const Profile = () => {
                   )}
                 </div>
               ))}
+              {getFilteredMedia().length === 0 && (
+                <div className="profilepage-media-empty">
+                  <Grid3X3 size={48} />
+                  <h3>Nenhuma mídia encontrada</h3>
+                  <p>Não há mídias disponíveis para os filtros selecionados.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -497,7 +543,7 @@ const Profile = () => {
 
       <BottomTabNavigation />
 
-      {/* Gift Modal */}
+      {/* Modals */}
       {showGiftModal && (
         <GiftModal 
           isOpen={showGiftModal}
@@ -507,6 +553,46 @@ const Profile = () => {
             avatar: profileData.avatar
           }}
         />
+      )}
+
+      {showPaymentModal && selectedMedia && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedMedia(null);
+          }}
+          post={selectedMedia}
+        />
+      )}
+
+      {showMediaModal && selectedMedia && (
+        <Modal
+          isOpen={showMediaModal}
+          title={selectedMedia.media_type === 'video' ? 'Vídeo' : 'Foto'}
+          onClose={() => {
+            setShowMediaModal(false);
+            setSelectedMedia(null);
+          }}
+        >
+          <div className="profilepage-media-modal">
+            {selectedMedia.media_type === 'video' ? (
+              <video 
+                src={`${Environment.API_BASE}/posts/media/${selectedMedia.media_url}`} 
+                controls 
+                style={{width: '100%'}}
+                className="profilepage-media-modal-content"
+              />
+            ) : (
+              <img 
+                style={{width: '100%'}}
+                src={`${Environment.API_BASE}/posts/media/${selectedMedia.media_url}`} 
+                alt="" 
+                className="profilepage-media-modal-content"
+              />
+            )}
+          </div>
+        </Modal>
       )}
     </>
   );

@@ -487,4 +487,117 @@ router.get('/image/:type/:filename', async (req, res) => {
     }
 });
 
+// Rota para buscar perfil de usuário
+router.get('/profile', validateToken, async (req, res) => {
+    try {
+        const { username } = req.query;
+
+        console.log(username);
+        
+        if (!username) {
+            return res.status(400).json({
+                success: false,
+                message: 'Username não fornecido'
+            });
+        }
+
+        // Busca o usuário e seus posts
+        const userQuery = `
+            SELECT 
+                u.id,
+                u.name,
+                u.username,
+                u.avatar,
+                u.cover_image coverImage,
+                u.bio,
+                u.location,
+                u.website,
+                u.role,
+                COUNT(DISTINCT p.id) posts_count
+            FROM [tekhno_hf].[tekhnodevelop].[Users] u
+            LEFT JOIN [tekhno_hf].[tekhnodevelop].[Posts] p ON p.user_id = u.id 
+                AND p.deleted_at IS NULL 
+                AND (p.scheduled_date IS NULL OR p.scheduled_date <= GETDATE())
+                AND (p.expiration_date IS NULL OR p.expiration_date > GETDATE())
+            WHERE u.username = @param0
+            GROUP BY u.id, u.name, u.username, u.avatar, u.cover_image, u.bio, u.location, u.website, u.role
+        `;
+
+        const userResult = await db.query(userQuery, [username]);
+        const userData = userResult.recordset[0];
+        
+        if (!userData) {
+            return res.status(404).json({
+                success: false,
+                message: 'Usuário não encontrado'
+            });
+        }
+
+        // Busca os posts do usuário
+        const postsQuery = `
+            SELECT 
+                p.id,
+                p.user_id,
+                p.content,
+                p.media_type,
+                p.media_url,
+                p.is_temporary,
+                p.expiration_date,
+                p.scheduled_date,
+                p.allow_comments,
+                p.is_paid,
+                p.price,
+                p.created_at,
+                p.updated_at,
+                p.deleted_at,
+                p.post_type,
+                p.poll_options,
+                p.poll_end_date,
+                p.quiz_questions,
+                p.quiz_end_date,
+                p.challenge_description,
+                p.challenge_end_date,
+                p.challenge_reward,
+                u.username,
+                u.avatar,
+                CASE WHEN p.user_id = @param0 THEN 1 ELSE 0 END is_owner,
+                (SELECT COUNT(*) FROM [tekhno_hf].[tekhnodevelop].[Comments] WHERE post_id = p.id) comments_count,
+                (SELECT COUNT(*) FROM [tekhno_hf].[tekhnodevelop].[Likes] WHERE post_id = p.id) likes_count,
+                CASE WHEN EXISTS(SELECT 1 FROM [tekhno_hf].[tekhnodevelop].[Likes] WHERE post_id = p.id AND user_id = @param0) THEN 1 ELSE 0 END is_liked,
+                CASE WHEN EXISTS(SELECT 1 FROM [tekhno_hf].[tekhnodevelop].[SavedPosts] WHERE post_id = p.id AND user_id = @param0) THEN 1 ELSE 0 END is_saved,
+                NULL user_vote_index,
+                NULL user_voted,
+                NULL total_votes,
+                NULL poll_results
+            FROM [tekhno_hf].[tekhnodevelop].[Posts] p
+            INNER JOIN [tekhno_hf].[tekhnodevelop].[Users] u ON p.user_id = u.id
+            WHERE p.user_id = @param1
+                AND p.deleted_at IS NULL
+                AND (p.scheduled_date IS NULL OR p.scheduled_date <= GETDATE())
+                AND (p.expiration_date IS NULL OR p.expiration_date > GETDATE())
+            ORDER BY p.created_at DESC
+        `;
+
+        const postsResult = await db.query(postsQuery, [req.user.id, userData.id]);
+        const posts = postsResult.recordset;
+
+        // Adiciona os posts ao objeto do usuário
+        const user = {
+            ...userData,
+            posts
+        };
+
+        res.json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        console.error('Erro ao buscar perfil:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar perfil'
+        });
+    }
+});
+
 module.exports = router;

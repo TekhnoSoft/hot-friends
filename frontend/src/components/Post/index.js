@@ -30,6 +30,7 @@ import { MainContext } from '../../helpers/MainContext';
 import './style.css';
 import Environment from '../../Environment';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Post = ({ post, onDelete, showActions = true }) => {
   const { user } = useContext(MainContext);
@@ -63,6 +64,8 @@ const Post = ({ post, onDelete, showActions = true }) => {
   const triggerRef = useRef(null);
   const videoRef = useRef(null);
   const audioRef = useRef(null);
+
+  const navigate = useNavigate();
 
   const handleLike = async (event) => {
     event.stopPropagation();
@@ -845,6 +848,7 @@ const Post = ({ post, onDelete, showActions = true }) => {
             {comments?.map(comment => (
               <div key={comment.id} className="comment">
                 <img
+                  onClick={() => {navigate(`/profile?username=${comment.username}`)}}
                   src={comment.avatar ? Api.getImageUrl(comment.avatar) : '/images/default-avatar.png'}
                   alt={comment.username}
                   className="comment-avatar"
@@ -879,7 +883,7 @@ const Post = ({ post, onDelete, showActions = true }) => {
       <article className="post fade-in">
         {/* Post Header */}
         <header className="post-header">
-          <div className="post-author">
+          <div className="post-author" onClick={() => {navigate(`/profile?username=${post.username}`)}}>
             <img
               src={post.avatar?.includes('users/image') ? post.avatar : Api.getImageUrl(post.avatar)}
               alt={post.username}

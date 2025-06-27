@@ -138,12 +138,6 @@ const Menu = () => {
               </div>
             </div>
           </div>
-          <button 
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate('/profile')}
-          >
-            Ver Perfil
-          </button>
         </div>
 
         {/* Menu principal */}
