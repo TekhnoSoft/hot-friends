@@ -217,8 +217,8 @@ router.post('/google/complete', validateOrigin, async (req, res) => {
             }
             // Cria novo usuário
             await db.query(
-                'INSERT INTO Users (id, username, email, password_hash) VALUES (NEWID(), @param0, @param1, @param2)',
-                [username, email, password_hash]
+                'INSERT INTO Users (id, username, email, password_hash, role) VALUES (NEWID(), @param0, @param1, @param2, @param3)',
+                [username, email, password_hash, 'user']
             );
             // Busca o usuário recém-criado
             const created = await db.query('SELECT * FROM Users WHERE email = @param0', [email]);
