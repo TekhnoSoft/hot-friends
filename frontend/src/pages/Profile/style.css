@@ -805,7 +805,7 @@
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
   position: sticky;
-  top: 129px; /* Header + tabs */
+  top: 110px; /* Header + tabs */
   z-index: 98;
 }
 
