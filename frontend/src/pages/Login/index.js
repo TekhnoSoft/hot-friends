@@ -17,6 +17,7 @@ import Post from '../../components/Post';
 import './style.css';
 import Api from '../../Api';
 import { GoogleLogin, googleLogout } from '@react-oauth/google';
+import Modal from '../../components/Modal';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -253,29 +254,36 @@ const Login = () => {
   };
 
   const handleGoogleLogin = async (credentialResponse) => {
-    // credentialResponse.credential é o JWT do Google
     try {
-      // Decodifica o token para pegar o email (ou use a API do Google)
-      const base64Url = credentialResponse.credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      const payload = JSON.parse(jsonPayload);
-      const email = payload.email;
-      // Chama backend
-      const result = await Api.googleLogin({ email, googleToken: credentialResponse.credential });
-      if (result.success) {
-        localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
-        window.location.href = '/';
-      } else if (result.needPassword) {
-        setGoogleData({ email, googleToken: credentialResponse.credential });
-        setShowGoogleModal(true);
-      } else {
-        setErrors({ general: result.message || 'Erro ao logar com Google.' });
-      }
+        // Decodifica o token para pegar o email (ou use a API do Google)
+        const base64Url = credentialResponse.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(jsonPayload);
+        const email = payload.email;
+
+        // Chama backend
+        const result = await Api.googleLogin({ email, googleToken: credentialResponse.credential });
+        
+        if (result.success) {
+            localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
+            window.location.href = '/';
+        } else if (result.needPassword) {
+            // Se o usuário já existe mas não tem senha, ou é novo
+            setGoogleData({ 
+                email, 
+                googleToken: credentialResponse.credential,
+                username: result.username // Se for usuário existente, já vem o username
+            });
+            setShowGoogleModal(true);
+        } else {
+            setErrors({ general: result.message || 'Erro ao logar com Google.' });
+        }
     } catch (err) {
-      setErrors({ general: 'Erro ao processar login com Google.' });
+        console.error('Erro no login com Google:', err);
+        setErrors({ general: 'Erro ao processar login com Google.' });
     }
   };
 
@@ -296,32 +304,118 @@ const Login = () => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleGoogleModalSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateGoogleModal()) return;
-    setIsLoading(true);
+  const handleGoogleModalSubmit = async (formData) => {
     try {
-      const result = await Api.googleLogin({
-        email: googleData.email,
-        googleToken: googleData.googleToken,
-        username: googleForm.username,
-        password: googleForm.password
-      });
-      if (result.success) {
-        setShowGoogleModal(false);
-        localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
-        window.location.href = '/';
-      } else {
-        setGoogleErrors({ general: result.message || 'Erro ao cadastrar com Google.' });
-      }
-    } finally {
-      setIsLoading(false);
+        const { username, password, confirmPassword } = formData;
+
+        // Validações
+        if (password !== confirmPassword) {
+            setErrors({ general: 'As senhas não coincidem.' });
+            return;
+        }
+
+        if (password.length < 6) {
+            setErrors({ general: 'A senha deve ter pelo menos 6 caracteres.' });
+            return;
+        }
+
+        // Envia dados para o backend
+        const result = await Api.googleLogin({
+            email: googleData.email,
+            googleToken: googleData.googleToken,
+            username: googleData.username || username, // Usa o username existente se houver
+            password
+        });
+
+        if (result.success) {
+            localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
+            window.location.href = '/';
+        } else {
+            setErrors({ general: result.message || 'Erro ao completar o cadastro.' });
+        }
+    } catch (err) {
+        console.error('Erro ao completar cadastro:', err);
+        setErrors({ general: 'Erro ao processar o cadastro.' });
     }
   };
 
   const handleForgotPassword = () => {
     console.log('Recuperar senha');
     // Implementar recuperação de senha
+  };
+
+  const GoogleModal = ({ show, onClose }) => {
+    const [formData, setFormData] = useState({
+        username: '',
+        password: '',
+        confirmPassword: ''
+    });
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        handleGoogleModalSubmit(formData);
+    };
+
+    return (
+        <Modal show={show} onClose={onClose}>
+            <div className="google-modal">
+                <h2>{googleData?.username ? 'Criar Senha' : 'Completar Cadastro'}</h2>
+                <form onSubmit={handleSubmit}>
+                    {!googleData?.username && (
+                        <div className="form-group">
+                            <label>Nome de usuário</label>
+                            <input
+                                type="text"
+                                name="username"
+                                value={formData.username}
+                                onChange={handleChange}
+                                required
+                                minLength={3}
+                                placeholder="Escolha um nome de usuário"
+                            />
+                        </div>
+                    )}
+                    <div className="form-group">
+                        <label>Senha</label>
+                        <input
+                            type="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            required
+                            minLength={6}
+                            placeholder="Digite sua senha"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Confirmar Senha</label>
+                        <input
+                            type="password"
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            required
+                            minLength={6}
+                            placeholder="Confirme sua senha"
+                        />
+                    </div>
+                    {errors.general && (
+                        <div className="error-message">{errors.general}</div>
+                    )}
+                    <button type="submit" className="btn btn-primary">
+                        {googleData?.username ? 'Criar Senha' : 'Completar Cadastro'}
+                    </button>
+                </form>
+            </div>
+        </Modal>
+    );
   };
 
   return (
@@ -716,32 +810,7 @@ const Login = () => {
 
       {/* Modal para completar cadastro Google */}
       {showGoogleModal && (
-        <div className="google-modal-overlay">
-          <div className="google-modal">
-            <h3>Complete seu cadastro</h3>
-            <form onSubmit={handleGoogleModalSubmit}>
-              <div className="loginpage-input-group">
-                <label>Nome de usuário</label>
-                <input type="text" name="username" value={googleForm.username} onChange={handleGoogleModalChange} />
-                {googleErrors.username && <span className="loginpage-error">{googleErrors.username}</span>}
-              </div>
-              <div className="loginpage-input-group">
-                <label>Senha</label>
-                <input type="password" name="password" value={googleForm.password} onChange={handleGoogleModalChange} />
-                {googleErrors.password && <span className="loginpage-error">{googleErrors.password}</span>}
-              </div>
-              <div className="loginpage-input-group">
-                <label>Confirmar senha</label>
-                <input type="password" name="confirmPassword" value={googleForm.confirmPassword} onChange={handleGoogleModalChange} />
-                {googleErrors.confirmPassword && <span className="loginpage-error">{googleErrors.confirmPassword}</span>}
-              </div>
-              {googleErrors.general && <div className="loginpage-error-general">{googleErrors.general}</div>}
-              <button type="submit" className="loginpage-submit-btn" disabled={isLoading}>
-                {isLoading ? 'Enviando...' : 'Finalizar cadastro'}
-              </button>
-            </form>
-          </div>
-        </div>
+        <GoogleModal show={showGoogleModal} onClose={() => setShowGoogleModal(false)} />
       )}
     </div>
   );

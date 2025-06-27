@@ -133,21 +133,55 @@ router.post('/google', validateOrigin, async (req, res) => {
     }
     try {
         // Verifica se o token do Google é válido (simples, para produção use a API do Google)
-        // Aqui apenas checamos se veio algo, mas o ideal é validar o token com a Google API
         if (!googleToken) {
             return res.status(401).json({ success: false, message: 'Token do Google inválido.' });
         }
+
         // Verifica se o usuário já existe
         const existing = await db.query('SELECT * FROM Users WHERE email = @param0', [email]);
         let user = existing.recordset[0];
+
         if (user) {
-            // Usuário já existe, faz login normal
+            // Usuário existe, verifica se tem senha
+            if (!user.password_hash) {
+                // Usuário não tem senha, precisa criar
+                if (!password) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        needPassword: true, 
+                        message: 'Por favor, crie uma senha para sua conta.',
+                        email: email,
+                        username: user.username
+                    });
+                }
+                // Atualiza o usuário com a nova senha
+                const password_hash = await bcrypt.hash(password, 10);
+                await db.query(
+                    'UPDATE Users SET password_hash = @param0 WHERE id = @param1',
+                    [password_hash, user.id]
+                );
+            }
+            // Gera token e faz login
             const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            return res.status(200).json({ success: true, token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+            return res.status(200).json({ 
+                success: true, 
+                token, 
+                user: { 
+                    id: user.id, 
+                    username: user.username, 
+                    email: user.email, 
+                    role: user.role 
+                } 
+            });
         } else {
             // Novo usuário: precisa de username e senha
             if (!username || !password) {
-                return res.status(400).json({ success: false, needPassword: true, message: 'Usuário novo, defina username e senha.' });
+                return res.status(400).json({ 
+                    success: false, 
+                    needPassword: true, 
+                    message: 'Usuário novo, defina username e senha.',
+                    email: email
+                });
             }
             // Verifica se username já existe
             const existingUsername = await db.query('SELECT id FROM Users WHERE username = @param0', [username]);
@@ -155,12 +189,24 @@ router.post('/google', validateOrigin, async (req, res) => {
                 return res.status(409).json({ success: false, message: 'Username já cadastrado.' });
             }
             const password_hash = await bcrypt.hash(password, 10);
-            await db.query('INSERT INTO Users (id, username, email, password_hash) VALUES (NEWID(), @param0, @param1, @param2)', [username, email, password_hash]);
+            await db.query(
+                'INSERT INTO Users (id, username, email, password_hash) VALUES (NEWID(), @param0, @param1, @param2)', 
+                [username, email, password_hash]
+            );
             // Busca o usuário recém-criado
             const created = await db.query('SELECT * FROM Users WHERE email = @param0', [email]);
             user = created.recordset[0];
             const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            return res.status(201).json({ success: true, token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+            return res.status(201).json({ 
+                success: true, 
+                token, 
+                user: { 
+                    id: user.id, 
+                    username: user.username, 
+                    email: user.email, 
+                    role: user.role 
+                } 
+            });
         }
     } catch (err) {
         console.error(err);

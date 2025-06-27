@@ -151,6 +151,8 @@
 /* Google Login */
 .loginpage-social-login {
   margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 .loginpage-google-btn {
@@ -1006,4 +1008,63 @@
 
 .loginpage-post-wrapper:hover .post-container {
   filter: blur(2px);
+}
+
+.google-modal {
+    padding: 20px;
+    max-width: 400px;
+    width: 100%;
+}
+
+.google-modal h2 {
+    margin-bottom: 20px;
+    text-align: center;
+    color: #333;
+}
+
+.google-modal .form-group {
+    margin-bottom: 15px;
+}
+
+.google-modal label {
+    display: block;
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.google-modal input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.google-modal input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.google-modal .error-message {
+    color: #dc3545;
+    margin-bottom: 15px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.google-modal button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.google-modal button:hover {
+    background-color: #0056b3;
 }
