@@ -438,9 +438,7 @@ const Login = () => {
         <div className="google-modal">
           <div className="loginpage-form-header">
             <h2>
-              {googleData?.isNewUser 
-                ? 'Completar Cadastro' 
-                : 'Criar Senha'}
+              Completar Cadastro
             </h2>
             <p>
               {googleData?.isNewUser 
@@ -454,12 +452,11 @@ const Login = () => {
                 {modalErrors.general}
               </div>
             )}
-            
+
             {googleData?.isNewUser && (
               <div className="loginpage-input-group">
                 <label className="loginpage-label">Nome de usuário <span style={{color: 'red'}}>*</span></label>
                 <div className="loginpage-input-container">
-                  <span className="loginpage-username-prefix">@</span>
                   <input
                     type="text"
                     name="username"
@@ -481,7 +478,6 @@ const Login = () => {
             <div className="loginpage-input-group">
               <label className="loginpage-label">Senha <span style={{color: 'red'}}>*</span></label>
               <div className="loginpage-input-container">
-                <Lock size={20} className="loginpage-input-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
@@ -493,13 +489,6 @@ const Login = () => {
                   disabled={isLoading}
                   className={`loginpage-input ${modalErrors.password ? 'loginpage-input-error' : ''}`}
                 />
-                <button
-                  type="button"
-                  className="loginpage-password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
               </div>
               {modalErrors.password && (
                 <span className="loginpage-error">{modalErrors.password}</span>
@@ -509,7 +498,6 @@ const Login = () => {
             <div className="loginpage-input-group">
               <label className="loginpage-label">Confirmar senha <span style={{color: 'red'}}>*</span></label>
               <div className="loginpage-input-container">
-                <Lock size={20} className="loginpage-input-icon" />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   name="confirmPassword"
@@ -521,13 +509,6 @@ const Login = () => {
                   disabled={isLoading}
                   className={`loginpage-input ${modalErrors.confirmPassword ? 'loginpage-input-error' : ''}`}
                 />
-                <button
-                  type="button"
-                  className="loginpage-password-toggle"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
               </div>
               {modalErrors.confirmPassword && (
                 <span className="loginpage-error">{modalErrors.confirmPassword}</span>
