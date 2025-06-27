@@ -434,58 +434,120 @@ const Login = () => {
     return (
       <Modal isOpen={true} onClose={onClose}>
         <div className="google-modal">
-          <h2>
-            {googleData?.isNewUser 
-              ? 'Completar Cadastro' 
-              : 'Criar Senha'}
-          </h2>
-          <form onSubmit={handleSubmit}>
-            {googleData?.isNewUser && (
-              <div className="form-group">
-                <label>Nome de usuário</label>
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  required
-                  minLength={3}
-                  placeholder="Escolha um nome de usuário"
-                  disabled={isLoading}
-                />
+          <div className="loginpage-form-header">
+            <h2>
+              {googleData?.isNewUser 
+                ? 'Completar Cadastro' 
+                : 'Criar Senha'}
+            </h2>
+            <p>
+              {googleData?.isNewUser 
+                ? 'Complete seu cadastro para continuar' 
+                : 'Crie uma senha para sua conta'}
+            </p>
+          </div>
+          <form onSubmit={handleSubmit} className="loginpage-form">
+            {modalErrors.general && (
+              <div className="loginpage-error-general">
+                {modalErrors.general}
               </div>
             )}
-            <div className="form-group">
-              <label>Senha</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                minLength={6}
-                placeholder="Digite sua senha"
-                disabled={isLoading}
-              />
-            </div>
-            <div className="form-group">
-              <label>Confirmar Senha</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                minLength={6}
-                placeholder="Confirme sua senha"
-                disabled={isLoading}
-              />
-            </div>
-            {modalErrors.general && (
-              <div className="error-message">{modalErrors.general}</div>
+            
+            {googleData?.isNewUser && (
+              <div className="loginpage-input-group">
+                <label className="loginpage-label">Nome de usuário <span style={{color: 'red'}}>*</span></label>
+                <div className="loginpage-input-container">
+                  <span className="loginpage-username-prefix">@</span>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                    minLength={3}
+                    placeholder="username"
+                    disabled={isLoading}
+                    className={`loginpage-input loginpage-username-input ${modalErrors.username ? 'loginpage-input-error' : ''}`}
+                  />
+                </div>
+                {modalErrors.username && (
+                  <span className="loginpage-error">{modalErrors.username}</span>
+                )}
+              </div>
             )}
-            <button type="submit" className="btn btn-primary" disabled={isLoading}>
-              {isLoading ? 'Processando...' : (googleData?.isNewUser ? 'Completar Cadastro' : 'Criar Senha')}
+
+            <div className="loginpage-input-group">
+              <label className="loginpage-label">Senha <span style={{color: 'red'}}>*</span></label>
+              <div className="loginpage-input-container">
+                <Lock size={20} className="loginpage-input-icon" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  placeholder="Digite sua senha"
+                  disabled={isLoading}
+                  className={`loginpage-input ${modalErrors.password ? 'loginpage-input-error' : ''}`}
+                />
+                <button
+                  type="button"
+                  className="loginpage-password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {modalErrors.password && (
+                <span className="loginpage-error">{modalErrors.password}</span>
+              )}
+            </div>
+
+            <div className="loginpage-input-group">
+              <label className="loginpage-label">Confirmar senha <span style={{color: 'red'}}>*</span></label>
+              <div className="loginpage-input-container">
+                <Lock size={20} className="loginpage-input-icon" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  placeholder="Confirme sua senha"
+                  disabled={isLoading}
+                  className={`loginpage-input ${modalErrors.confirmPassword ? 'loginpage-input-error' : ''}`}
+                />
+                <button
+                  type="button"
+                  className="loginpage-password-toggle"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {modalErrors.confirmPassword && (
+                <span className="loginpage-error">{modalErrors.confirmPassword}</span>
+              )}
+            </div>
+
+            <button 
+              type="submit" 
+              className="loginpage-submit-btn"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="loginpage-loading">
+                  <div className="loginpage-spinner"></div>
+                  <span>{googleData?.isNewUser ? 'Criando conta...' : 'Criando senha...'}</span>
+                </div>
+              ) : (
+                <>
+                  <span>{googleData?.isNewUser ? 'Completar Cadastro' : 'Criar Senha'}</span>
+                  <ArrowRight size={20} />
+                </>
+              )}
             </button>
           </form>
         </div>
