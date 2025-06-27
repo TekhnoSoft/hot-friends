@@ -135,8 +135,6 @@ const Api = {
                 delete profileData.coverImage;
             }
 
-            console.log(profileData);
-
             const response = await axios.put(`${API_BASE}/users/update`, profileData, Environment.HEADERS);
             
             if (response.data.success) {

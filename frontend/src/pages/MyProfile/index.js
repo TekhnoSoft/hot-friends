@@ -109,7 +109,6 @@ const MyProfile = () => {
 
   const handleSaveProfile = async () => {
     try {
-      console.log(formData);
       const response = await Api.updateProfile(formData);
       if (response.success) {
         setShowEditModal(false);
