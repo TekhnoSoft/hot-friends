@@ -102,28 +102,57 @@ router.get('/media/:filename', (req, res) => {
     const isWindows = os.platform() === 'win32';
     console.log('Platform:', isWindows ? 'Windows' : 'Linux');
     
-    // Define o caminho base da pasta de upload
-    const uploadDir = isWindows 
-        ? 'C:\\upload'
-        : '/etc/easypanel/projects/hot-friends/hotfriends-backend/volumes/upload';
+    // Possíveis caminhos para o volume no container (pasta 'upload')
+    const possiblePaths = [
+        '/app/upload',            // Caminho padrão comum
+        '/upload',                // Caminho na raiz
+        './upload',               // Caminho relativo
+        '/app/volumes/upload',    // Possível caminho do volume
+        '/data/upload',           // Outro caminho comum
+        path.join(__dirname, '..', 'upload'), // Relativo ao projeto
+        path.join(process.cwd(), 'upload'),   // Relativo ao diretório de trabalho
+        path.join(__dirname, 'upload'),       // Relativo ao arquivo atual
+    ];
     
-    // Cria o caminho completo do arquivo
-    const filePath = path.join(uploadDir, filename);
+    // No Windows, usa o caminho original
+    if (isWindows) {
+        possiblePaths.unshift('C:\\upload');
+    }
     
-    console.log('Tentando acessar arquivo:', filePath);
+    console.log('Procurando arquivo:', filename);
+    console.log('Diretório de trabalho atual:', process.cwd());
+    console.log('__dirname:', __dirname);
     
-    // Verifica se o arquivo existe antes de tentar servir
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-            console.error('Arquivo não encontrado:', filePath);
-            console.error('Erro:', err.message);
+    // Função para tentar encontrar o arquivo em diferentes locais
+    const findFile = (paths, index = 0) => {
+        if (index >= paths.length) {
+            console.error('Arquivo não encontrado em nenhum dos caminhos possíveis');
             return res.status(404).json({ 
                 error: 'Arquivo não encontrado',
                 filename: filename,
-                path: filePath 
+                searchedPaths: paths
             });
         }
         
+        const currentPath = paths[index];
+        const filePath = path.resolve(currentPath, filename);
+        
+        console.log(`Tentativa ${index + 1}: ${filePath}`);
+        
+        fs.access(filePath, fs.constants.F_OK, (err) => {
+            if (err) {
+                // Tenta o próximo caminho
+                findFile(paths, index + 1);
+            } else {
+                console.log('Arquivo encontrado em:', filePath);
+                // Arquivo encontrado, serve ele
+                serveFile(filePath);
+            }
+        });
+    };
+    
+    const serveFile = (filePath) => {
+    
         // Verifica se é um arquivo (não diretório)
         fs.stat(filePath, (err, stats) => {
             if (err) {
@@ -146,7 +175,10 @@ router.get('/media/:filename', (req, res) => {
                 }
             });
         });
-    });
+    };
+    
+    // Inicia a busca pelos caminhos possíveis
+    findFile(possiblePaths);
 });
 
 // Criar um novo post
