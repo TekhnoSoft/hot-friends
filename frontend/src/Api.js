@@ -410,6 +410,32 @@ const Api = {
         } catch (error) {
             throw error.response?.data || error.message;
         }
+    },
+
+    // Verifica o email do Google
+    googleCheck: async (data) => {
+        try {
+            const response = await axios.post(`${API_BASE}/users/google/check`, data);
+            return response.data;
+        } catch (err) {
+            if (err.response && err.response.data) {
+                return err.response.data;
+            }
+            return { success: false, message: 'Erro de conexão com o servidor.' };
+        }
+    },
+
+    // Completa o cadastro/login com Google
+    googleComplete: async (data) => {
+        try {
+            const response = await axios.post(`${API_BASE}/users/google/complete`, data);
+            return response.data;
+        } catch (err) {
+            if (err.response && err.response.data) {
+                return err.response.data;
+            }
+            return { success: false, message: 'Erro de conexão com o servidor.' };
+        }
     }
 }
 

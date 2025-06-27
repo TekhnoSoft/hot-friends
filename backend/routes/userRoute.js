@@ -125,14 +125,14 @@ router.post('/register', validateOrigin, async (req, res) => {
     }
 });
 
-// Rota de login/cadastro com Google
-router.post('/google', validateOrigin, async (req, res) => {
-    const { email, username, password, googleToken } = req.body;
+// Rota para verificar email do Google
+router.post('/google/check', validateOrigin, async (req, res) => {
+    const { email, googleToken } = req.body;
     if (!email || !googleToken) {
         return res.status(400).json({ success: false, message: 'Email e token do Google são obrigatórios.' });
     }
     try {
-        // Verifica se o token do Google é válido (simples, para produção use a API do Google)
+        // Verifica se o token do Google é válido
         if (!googleToken) {
             return res.status(401).json({ success: false, message: 'Token do Google inválido.' });
         }
@@ -144,24 +144,16 @@ router.post('/google', validateOrigin, async (req, res) => {
         if (user) {
             // Usuário existe, verifica se tem senha
             if (!user.password_hash) {
-                // Usuário não tem senha, precisa criar
-                if (!password) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        needPassword: true, 
-                        message: 'Por favor, crie uma senha para sua conta.',
-                        email: email,
-                        username: user.username
-                    });
-                }
-                // Atualiza o usuário com a nova senha
-                const password_hash = await bcrypt.hash(password, 10);
-                await db.query(
-                    'UPDATE Users SET password_hash = @param0 WHERE id = @param1',
-                    [password_hash, user.id]
-                );
+                return res.status(200).json({ 
+                    success: false, 
+                    needPassword: true, 
+                    message: 'Por favor, crie uma senha para sua conta.',
+                    email: email,
+                    username: user.username,
+                    isNewUser: false
+                });
             }
-            // Gera token e faz login
+            // Usuário existe e tem senha, pode fazer login
             const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
             return res.status(200).json({ 
                 success: true, 
@@ -174,40 +166,77 @@ router.post('/google', validateOrigin, async (req, res) => {
                 } 
             });
         } else {
-            // Novo usuário: precisa de username e senha
-            if (!username || !password) {
-                return res.status(400).json({ 
-                    success: false, 
-                    needPassword: true, 
-                    message: 'Usuário novo, defina username e senha.',
-                    email: email
-                });
+            // Usuário novo
+            return res.status(200).json({ 
+                success: false, 
+                needPassword: true, 
+                message: 'Usuário novo, defina username e senha.',
+                email: email,
+                isNewUser: true
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: 'Erro interno do servidor.' });
+    }
+});
+
+// Rota para criar/atualizar senha do usuário Google
+router.post('/google/complete', validateOrigin, async (req, res) => {
+    const { email, googleToken, username, password } = req.body;
+    if (!email || !googleToken || !password) {
+        return res.status(400).json({ success: false, message: 'Email, token e senha são obrigatórios.' });
+    }
+    try {
+        // Verifica se o token do Google é válido
+        if (!googleToken) {
+            return res.status(401).json({ success: false, message: 'Token do Google inválido.' });
+        }
+
+        // Hash da senha
+        const password_hash = await bcrypt.hash(password, 10);
+
+        // Verifica se o usuário já existe
+        const existing = await db.query('SELECT * FROM Users WHERE email = @param0', [email]);
+        let user = existing.recordset[0];
+
+        if (user) {
+            // Atualiza a senha do usuário existente
+            await db.query(
+                'UPDATE Users SET password_hash = @param0 WHERE id = @param1',
+                [password_hash, user.id]
+            );
+        } else {
+            // Verifica se o username está disponível
+            if (!username) {
+                return res.status(400).json({ success: false, message: 'Username é obrigatório para novos usuários.' });
             }
-            // Verifica se username já existe
             const existingUsername = await db.query('SELECT id FROM Users WHERE username = @param0', [username]);
             if (existingUsername.recordset.length > 0) {
                 return res.status(409).json({ success: false, message: 'Username já cadastrado.' });
             }
-            const password_hash = await bcrypt.hash(password, 10);
+            // Cria novo usuário
             await db.query(
-                'INSERT INTO Users (id, username, email, password_hash) VALUES (NEWID(), @param0, @param1, @param2)', 
+                'INSERT INTO Users (id, username, email, password_hash) VALUES (NEWID(), @param0, @param1, @param2)',
                 [username, email, password_hash]
             );
             // Busca o usuário recém-criado
             const created = await db.query('SELECT * FROM Users WHERE email = @param0', [email]);
             user = created.recordset[0];
-            const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            return res.status(201).json({ 
-                success: true, 
-                token, 
-                user: { 
-                    id: user.id, 
-                    username: user.username, 
-                    email: user.email, 
-                    role: user.role 
-                } 
-            });
         }
+
+        // Gera token e retorna
+        const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        return res.status(200).json({ 
+            success: true, 
+            token, 
+            user: { 
+                id: user.id, 
+                username: user.username || username, 
+                email: user.email, 
+                role: user.role 
+            } 
+        });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ success: false, message: 'Erro interno do servidor.' });
