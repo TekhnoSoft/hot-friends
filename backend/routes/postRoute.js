@@ -98,6 +98,7 @@ router.post('/upload', validateToken, upload.single('file'), async (req, res) =>
 router.get('/media/:filename', (req, res) => {
     const { filename } = req.params;
     const isWindows = os.platform() === 'win32';
+    console.log(isWindows);
     const filePath = isWindows 
         ? path.join('C:\\', 'upload', filename)
         : path.join('/etc/easypanel/projects/hot-friends/hotfriends-backend/volumes/upload', filename);
