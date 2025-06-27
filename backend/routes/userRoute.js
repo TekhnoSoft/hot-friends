@@ -330,7 +330,7 @@ router.get('/image/:type/:filename', async (req, res) => {
     try {
         const { type, filename } = req.params;
         
-        // Possíveis caminhos para o volume no container (pasta 'upload' com subpasta 'type')
+        // Possíveis caminhos para o volume no container (pasta 'upload' SEM subpasta 'type')
         const possibleBasePaths = [
             '/app/upload',
             '/upload',
@@ -342,14 +342,14 @@ router.get('/image/:type/:filename', async (req, res) => {
             path.join(__dirname, 'upload'),
         ];
         
-        console.log(`Procurando imagem: ${type}/${filename}`);
+        console.log(`Procurando imagem: ${filename} (type: ${type} - ignorado por enquanto)`);
         console.log('Diretório de trabalho atual:', process.cwd());
         console.log('__dirname:', __dirname);
         
-        // Função para tentar encontrar o arquivo em diferentes locais
+        // Função para tentar encontrar o arquivo em diferentes locais (SEM usar o type no caminho)
         const findImageFile = async (basePaths) => {
             for (const basePath of basePaths) {
-                const fullPath = path.resolve(basePath, type, filename);
+                const fullPath = path.resolve(basePath, filename); // Removido o 'type' do caminho
                 console.log(`Tentando: ${fullPath}`);
                 
                 try {
@@ -373,12 +373,12 @@ router.get('/image/:type/:filename', async (req, res) => {
         const imagePath = await findImageFile(possibleBasePaths);
         
         if (!imagePath) {
-            console.error(`Imagem não encontrada: ${type}/${filename}`);
-            console.error('Caminhos pesquisados:', possibleBasePaths.map(p => path.resolve(p, type, filename)));
+            console.error(`Imagem não encontrada: ${filename}`);
+            console.error('Caminhos pesquisados:', possibleBasePaths.map(p => path.resolve(p, filename)));
             return res.status(404).json({ 
                 success: false, 
                 message: 'Imagem não encontrada.',
-                searchedPaths: possibleBasePaths.map(p => path.resolve(p, type, filename))
+                searchedPaths: possibleBasePaths.map(p => path.resolve(p, filename))
             });
         }
 
