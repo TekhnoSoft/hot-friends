@@ -187,6 +187,16 @@ router.get('/get', validateToken, async (req, res) => {
     }
 });
 
+// Servir arquivos de mídia do usuário
+router.get('/media/:filename', (req, res) => {
+    const { filename } = req.params;
+    const isWindows = os.platform() === 'win32';
+    const filePath = isWindows 
+        ? path.join('C:\\', 'upload', filename)
+        : path.join('/etc/easypanel/projects/hot-friends/hotfriends-backend/volumes/upload', filename);
+    res.sendFile(filePath);
+});
+
 // Rota para atualizar perfil
 router.put('/update', validateToken, async (req, res) => {
     try {
