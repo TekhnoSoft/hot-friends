@@ -434,7 +434,7 @@ const Login = () => {
     if (!isOpen) return null;
 
     return (
-      <Modal isOpen={true} onClose={onClose} title="Completar Cadastro">
+      <Modal isOpen={isOpen} onClose={onClose} title="Completar Cadastro">
         <div className="google-modal">
           <div className="loginpage-form-header">
             <p>
@@ -931,7 +931,7 @@ const Login = () => {
       {/* Modal do Google */}
       {showGoogleModal && googleData && (
         <GoogleModal 
-          isOpen={true} 
+          isOpen={showGoogleModal} 
           onClose={() => {
             console.log('Fechando modal...');
             setShowGoogleModal(false);
