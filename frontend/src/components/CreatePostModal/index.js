@@ -311,13 +311,13 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                 <HelpCircle size={20} />
                 <span className="hf-button-text">Quiz</span>
             </button>
-            <button
+            {/*<button
                 onClick={() => setPostData({ ...postData, postType: postData.postType === 'challenge' ? 'regular' : 'challenge' })}
                 className={postData.postType === 'challenge' ? 'active' : ''}
             >
                 <Award size={20} />
                 <span className="hf-button-text">Desafio</span>
-            </button>
+            </button>*/}
         </div>
     );
 

@@ -452,6 +452,25 @@ const Api = {
             console.error('Erro ao buscar resultados da enquete:', error);
             throw error.response?.data || error;
         }
+    },
+
+    // Quiz
+    submitQuiz: async (postId, responses) => {
+        try {
+            const response = await axios.post(`${API_BASE}/posts/${postId}/quiz`, { responses }, Environment.HEADERS);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    getQuizResults: async (postId) => {
+        try {
+            const response = await axios.get(`${API_BASE}/posts/${postId}/quiz-results`, Environment.HEADERS);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
     }
 }
 

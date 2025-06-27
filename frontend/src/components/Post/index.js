@@ -54,6 +54,10 @@ const Post = ({ post, onDelete, showActions = true }) => {
   const [pollResults, setPollResults] = useState(null);
   const [totalVotes, setTotalVotes] = useState(0);
   const [userVoted, setUserVoted] = useState(false);
+  const [selectedQuizAnswers, setSelectedQuizAnswers] = useState({});
+  const [quizResults, setQuizResults] = useState(null);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const [hasSubmittedQuiz, setHasSubmittedQuiz] = useState(false);
 
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
@@ -461,6 +465,160 @@ const Post = ({ post, onDelete, showActions = true }) => {
     }
   };
 
+  useEffect(() => {
+    const loadQuizResults = async () => {
+      if (post.post_type === 'quiz') {
+        try {
+          const response = await Api.getQuizResults(post.id);
+          if (response.success) {
+            setQuizResults(response);
+            setHasSubmittedQuiz(response.questions.some(q => q.userResponse !== undefined));
+          }
+        } catch (error) {
+          console.error('Erro ao carregar resultados do quiz:', error);
+          toast.error('Erro ao carregar resultados do quiz');
+        }
+      }
+    };
+
+    loadQuizResults();
+  }, [post.id, post.post_type]);
+
+  const handleQuizAnswer = (questionIndex, answer) => {
+    if (hasSubmittedQuiz || isSubmittingQuiz) return;
+    
+    setSelectedQuizAnswers(prev => ({
+      ...prev,
+      [questionIndex]: answer
+    }));
+  };
+
+  const handleQuizSubmit = async () => {
+    if (hasSubmittedQuiz || isSubmittingQuiz) return;
+
+    const quizQuestions = JSON.parse(post.quiz_questions || '[]');
+    if (Object.keys(selectedQuizAnswers).length !== quizQuestions.length) {
+      toast.error('Por favor, responda todas as questões');
+      return;
+    }
+
+    try {
+      setIsSubmittingQuiz(true);
+      const responses = quizQuestions.map((_, index) => selectedQuizAnswers[index]);
+      const response = await Api.submitQuiz(post.id, responses);
+
+      if (response.success) {
+        setQuizResults(await Api.getQuizResults(post.id));
+        setHasSubmittedQuiz(true);
+        toast.success(`Quiz completado! Você acertou ${response.correct_answers} de ${response.total_questions} questões`);
+      }
+    } catch (error) {
+      console.error('Erro ao enviar respostas:', error);
+      toast.error(error.message || 'Erro ao enviar respostas');
+    } finally {
+      setIsSubmittingQuiz(false);
+    }
+  };
+
+  const renderQuizContent = () => {
+    if (!post.quiz_questions) return null;
+
+    const questions = JSON.parse(post.quiz_questions);
+    const quizEnded = quizResults?.quiz_ended;
+    const showResults = hasSubmittedQuiz || quizEnded;
+
+    return (
+      <div className="quiz-container">
+        <h4>Quiz</h4>
+        {questions.map((question, questionIndex) => (
+          <div key={questionIndex} className="quiz-question">
+            <p className="question-text">{question.question}</p>
+            <div className="options-container">
+              {question.options.map((option, optionIndex) => {
+                const isSelected = selectedQuizAnswers[questionIndex] === optionIndex;
+                const userResponse = quizResults?.questions[questionIndex]?.userResponse;
+                const correctOption = quizResults?.questions[questionIndex]?.correctOption;
+                const statistics = quizResults?.questions[questionIndex]?.statistics[optionIndex];
+                
+                let optionClass = 'quiz-option';
+                if (showResults) {
+                  if (userResponse === optionIndex) optionClass += ' selected';
+                  if (correctOption === optionIndex) optionClass += ' correct';
+                  if (userResponse === optionIndex && userResponse !== correctOption) {
+                    optionClass += ' incorrect';
+                  }
+                } else if (isSelected) {
+                  optionClass += ' selected';
+                }
+
+                return (
+                  <button
+                    key={optionIndex}
+                    className={optionClass}
+                    onClick={() => handleQuizAnswer(questionIndex, optionIndex)}
+                    disabled={showResults}
+                  >
+                    <div className="option-content">
+                      <span className="option-text">{option}</span>
+                      {showResults && statistics && (
+                        <span className="option-stats">
+                          {statistics.percentage.toFixed(1)}% ({statistics.count})
+                        </span>
+                      )}
+                    </div>
+                    {showResults && (
+                      <div 
+                        className="option-bar" 
+                        style={{ width: `${statistics?.percentage || 0}%` }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {!showResults && (
+          <button
+            style={{display: Object.keys(selectedQuizAnswers).length !== questions.length ? 'none' : 'block'}}
+            className="submit-quiz-button"
+            onClick={handleQuizSubmit}
+            disabled={isSubmittingQuiz || Object.keys(selectedQuizAnswers).length !== questions.length}
+          >
+            {isSubmittingQuiz ? 'Enviando...' : 'Enviar Respostas'}
+          </button>
+        )}
+
+        {showResults && (
+          <div className="quiz-results">
+            <div className="results-summary">
+              {quizResults.user_score !== undefined && (
+                <p className="user-score">
+                  Sua pontuação: {quizResults.user_score} de {quizResults.total_questions}
+                </p>
+              )}
+              <p className="average-score">
+                Média geral: {quizResults.average_score}
+              </p>
+              <p className="total-responses">
+                Total de respostas: {quizResults.total_responses}
+              </p>
+            </div>
+            {post.quiz_end_date && (
+              <p className="quiz-end-date">
+                {quizEnded 
+                  ? `Quiz encerrado em ${new Date(post.quiz_end_date).toLocaleDateString()}`
+                  : `Encerra em: ${new Date(post.quiz_end_date).toLocaleDateString()}`
+                }
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderPostContent = () => {
     if (post.is_paid && !isUnlocked) {
       return renderPaidContentOverlay();
@@ -539,36 +697,10 @@ const Post = ({ post, onDelete, showActions = true }) => {
         );
 
       case 'quiz':
-        const quizQuestions = parseSafeJson(post.quiz_questions);
         return (
           <div className="post-content-wrapper">
             {renderMedia()}
-            <div className="post-quiz">
-              <h4>Quiz</h4>
-              {quizQuestions.map((question, qIndex) => (
-                <div key={qIndex} className="quiz-question">
-                  <p className="question-text">{question.question}</p>
-                  <div className="quiz-options">
-                    {question.options.map((option, oIndex) => (
-                      <button
-                        key={oIndex}
-                        className={`quiz-option ${quizResponses[qIndex] === oIndex ? 'selected' : ''}`}
-                        onClick={() => handleQuizResponse(qIndex, oIndex)}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <button
-                className="submit-quiz-button"
-                onClick={handleSubmitQuiz}
-                disabled={Object.keys(quizResponses).length !== quizQuestions.length}
-              >
-                Enviar Respostas
-              </button>
-            </div>
+            {renderQuizContent()}
           </div>
         );
 

@@ -485,7 +485,116 @@ router.post('/:postId/vote', validateToken, async (req, res) => {
     }
 });
 
-// Responder um questionário
+// Obter resultados do quiz
+router.get('/:postId/quiz-results', validateToken, async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user.id;
+
+    try {
+        const pool = await sql.connect();
+
+        // Buscar informações do quiz e resposta do usuário
+        const result = await pool.request()
+            .input('postId', sql.UniqueIdentifier, postId)
+            .input('userId', sql.UniqueIdentifier, userId)
+            .query(`
+                SELECT 
+                    p.quiz_questions,
+                    p.quiz_end_date,
+                    qr.responses as user_responses,
+                    qr.score as user_score,
+                    (SELECT COUNT(*) FROM QuizResponses WHERE post_id = @postId) as total_responses,
+                    (
+                        SELECT AVG(CAST(score AS FLOAT))
+                        FROM QuizResponses
+                        WHERE post_id = @postId
+                    ) as average_score
+                FROM Posts p
+                LEFT JOIN QuizResponses qr ON p.id = qr.post_id AND qr.user_id = @userId
+                WHERE p.id = @postId AND p.post_type = 'quiz'
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Quiz não encontrado'
+            });
+        }
+
+        const record = result.recordset[0];
+        const quizQuestions = JSON.parse(record.quiz_questions || '[]');
+        const userResponses = record.user_responses ? JSON.parse(record.user_responses) : null;
+        
+        // Se o quiz ainda não terminou e o usuário não respondeu, não mostrar as respostas corretas
+        const quizEnded = record.quiz_end_date && new Date(record.quiz_end_date) < new Date();
+        const hasUserResponded = userResponses !== null;
+
+        // Calcular estatísticas por questão
+        const questionStats = await pool.request()
+            .input('postId', sql.UniqueIdentifier, postId)
+            .query(`
+                WITH ResponseData AS (
+                    SELECT 
+                        responses,
+                        CAST(JSON_VALUE(value, '$.index') AS INT) as question_index,
+                        JSON_VALUE(value, '$.response') as selected_option
+                    FROM QuizResponses
+                    CROSS APPLY OPENJSON(responses)
+                    WHERE post_id = @postId
+                )
+                SELECT 
+                    question_index,
+                    selected_option,
+                    COUNT(*) as option_count,
+                    CAST(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM QuizResponses WHERE post_id = @postId) AS DECIMAL(5,2)) as percentage
+                FROM ResponseData
+                GROUP BY question_index, selected_option
+                ORDER BY question_index, selected_option
+            `);
+
+        // Processar estatísticas por questão
+        const statistics = {};
+        questionStats.recordset.forEach(stat => {
+            if (!statistics[stat.question_index]) {
+                statistics[stat.question_index] = {};
+            }
+            statistics[stat.question_index][stat.selected_option] = {
+                count: stat.option_count,
+                percentage: stat.percentage
+            };
+        });
+
+        // Preparar resposta
+        const response = {
+            success: true,
+            quiz_ended: quizEnded,
+            total_responses: record.total_responses,
+            average_score: parseFloat(record.average_score || 0).toFixed(1),
+            questions: quizQuestions.map((q, index) => ({
+                question: q.question,
+                options: q.options,
+                statistics: statistics[index] || {},
+                ...(quizEnded || hasUserResponded ? { correctOption: q.correctOption } : {}),
+                ...(hasUserResponded ? { userResponse: userResponses[index] } : {})
+            })),
+            ...(hasUserResponded ? {
+                user_score: record.user_score,
+                total_questions: quizQuestions.length
+            } : {})
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Erro ao buscar resultados do quiz:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar resultados do quiz',
+            error: error.message
+        });
+    }
+});
+
+// Responder quiz
 router.post('/:postId/quiz', validateToken, async (req, res) => {
     const { postId } = req.params;
     const { responses } = req.body;
@@ -493,6 +602,25 @@ router.post('/:postId/quiz', validateToken, async (req, res) => {
     try {
         const pool = await sql.connect();
         
+        // Verificar se o quiz existe e ainda não terminou
+        const quizCheck = await pool.request()
+            .input('postId', sql.UniqueIdentifier, postId)
+            .input('currentDate', sql.DateTime, new Date())
+            .query(`
+                SELECT quiz_questions, quiz_end_date 
+                FROM Posts 
+                WHERE id = @postId 
+                AND post_type = 'quiz'
+                AND (quiz_end_date IS NULL OR quiz_end_date > @currentDate)
+            `);
+
+        if (quizCheck.recordset.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Quiz não encontrado ou já encerrado'
+            });
+        }
+
         // Verificar se o usuário já respondeu
         const checkResponse = await pool.request()
             .input('postId', sql.UniqueIdentifier, postId)
@@ -502,43 +630,74 @@ router.post('/:postId/quiz', validateToken, async (req, res) => {
         if (checkResponse.recordset.length > 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Você já respondeu este questionário'
+                message: 'Você já respondeu este quiz'
             });
         }
 
-        // Buscar as respostas corretas
-        const post = await pool.request()
-            .input('postId', sql.UniqueIdentifier, postId)
-            .query('SELECT quiz_questions FROM Posts WHERE id = @postId');
-
-        const quizQuestions = JSON.parse(post.recordset[0].quiz_questions);
+        const quizQuestions = JSON.parse(quizCheck.recordset[0].quiz_questions);
         
+        // Validar respostas
+        if (!Array.isArray(responses) || responses.length !== quizQuestions.length) {
+            return res.status(400).json({
+                success: false,
+                message: 'Formato de respostas inválido'
+            });
+        }
+
         // Calcular pontuação
         let score = 0;
-        responses.forEach((response, index) => {
-            if (response === quizQuestions[index].correctOption) {
-                score++;
-            }
-        });
+        const formattedResponses = responses.map((response, index) => ({
+            index,
+            response,
+            correct: response === quizQuestions[index].correctOption
+        }));
 
-        // Registrar resposta
-        await pool.request()
-            .input('postId', sql.UniqueIdentifier, postId)
-            .input('userId', sql.UniqueIdentifier, req.user.id)
-            .input('responses', sql.NVarChar(sql.MAX), JSON.stringify(responses))
-            .input('score', sql.Int, score)
-            .query(`
-                INSERT INTO QuizResponses (post_id, user_id, responses, score)
-                VALUES (@postId, @userId, @responses, @score)
-            `);
+        score = formattedResponses.filter(r => r.correct).length;
 
-        res.json({
-            success: true,
-            message: 'Respostas registradas com sucesso!',
-            score
-        });
+        // Registrar resposta em uma transação
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // Registrar resposta
+            await transaction.request()
+                .input('postId', sql.UniqueIdentifier, postId)
+                .input('userId', sql.UniqueIdentifier, req.user.id)
+                .input('responses', sql.NVarChar(sql.MAX), JSON.stringify(formattedResponses))
+                .input('score', sql.Int, score)
+                .query(`
+                    INSERT INTO QuizResponses (post_id, user_id, responses, score)
+                    VALUES (@postId, @userId, @responses, @score)
+                `);
+
+            await transaction.commit();
+
+            // Buscar estatísticas atualizadas
+            const stats = await pool.request()
+                .input('postId', sql.UniqueIdentifier, postId)
+                .query(`
+                    SELECT 
+                        COUNT(*) as total_responses,
+                        AVG(CAST(score AS FLOAT)) as average_score
+                    FROM QuizResponses
+                    WHERE post_id = @postId
+                `);
+
+            res.json({
+                success: true,
+                message: 'Respostas registradas com sucesso!',
+                score,
+                total_questions: quizQuestions.length,
+                correct_answers: formattedResponses.filter(r => r.correct).length,
+                total_responses: stats.recordset[0].total_responses,
+                average_score: parseFloat(stats.recordset[0].average_score || 0).toFixed(1)
+            });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
     } catch (error) {
-        console.error('Erro ao responder questionário:', error);
+        console.error('Erro ao responder quiz:', error);
         res.status(500).json({
             success: false,
             message: 'Erro ao registrar respostas',
