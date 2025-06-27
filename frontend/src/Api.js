@@ -281,11 +281,14 @@ const Api = {
     
     voteInPoll: async (postId, optionIndex) => {
         try {
-            const response = await axios.post(`/posts/${postId}/vote`, { optionIndex });
+            const response = await axios.post(`${API_BASE}/posts/${postId}/vote`, 
+                { optionIndex }, 
+                Environment.HEADERS
+            );
             return response.data;
         } catch (error) {
             console.error('Erro ao votar na enquete:', error);
-            throw error;
+            throw error.response?.data || error;
         }
     },
     
@@ -435,6 +438,19 @@ const Api = {
                 return err.response.data;
             }
             return { success: false, message: 'Erro de conexão com o servidor.' };
+        }
+    },
+
+    getPollResults: async (postId) => {
+        try {
+            const response = await axios.get(
+                `${API_BASE}/posts/${postId}/poll-results`,
+                Environment.HEADERS
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Erro ao buscar resultados da enquete:', error);
+            throw error.response?.data || error;
         }
     }
 }

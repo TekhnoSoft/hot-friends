@@ -29,8 +29,9 @@ import Api from '../../Api';
 import { MainContext } from '../../helpers/MainContext';
 import './style.css';
 import Environment from '../../Environment';
+import { toast } from 'react-hot-toast';
 
-const Post = ({ post, onPostDeleted }) => {
+const Post = ({ post, onDelete, showActions = true }) => {
   const { user } = useContext(MainContext);
   const [isLiked, setIsLiked] = useState(post.is_liked === 1);
   const [isSaved, setIsSaved] = useState(post.is_saved === 1);
@@ -44,10 +45,15 @@ const Post = ({ post, onPostDeleted }) => {
   const [comments, setComments] = useState([]);
   const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
-  const [selectedPollOption, setSelectedPollOption] = useState(null);
+  const [selectedPollOption, setSelectedPollOption] = useState(post.user_vote_index ?? null);
   const [quizResponses, setQuizResponses] = useState({});
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isVoting, setIsVoting] = useState(false);
+  const [pollResults, setPollResults] = useState(null);
+  const [totalVotes, setTotalVotes] = useState(0);
+  const [userVoted, setUserVoted] = useState(false);
 
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
@@ -125,8 +131,8 @@ const Post = ({ post, onPostDeleted }) => {
           try {
             await Api.deletePost(post.id);
             setIsVisible(false);
-            if (onPostDeleted) {
-              onPostDeleted(post.id);
+            if (onDelete) {
+              onDelete(post.id);
             }
           } catch (error) {
             console.error('Erro ao deletar post:', error);
@@ -207,14 +213,105 @@ const Post = ({ post, onPostDeleted }) => {
     return `${diffInYears} a`;
   };
 
+  useEffect(() => {
+    const loadPollResults = async () => {
+      if (post.post_type === 'poll') {
+        try {
+          // Se já temos os dados no post, use-os
+          if (post.poll_results) {
+            let results;
+            try {
+              // Tentar usar pollResults primeiro (array já processado)
+              if (Array.isArray(post.pollResults)) {
+                results = post.pollResults;
+              } else {
+                // Se não tiver pollResults, processar poll_results
+                results = typeof post.poll_results === 'string' 
+                  ? JSON.parse(post.poll_results) 
+                  : post.poll_results;
+              }
+            } catch (e) {
+              console.error('Erro ao processar poll_results:', e);
+              results = [];
+            }
+            
+            // Garantir que os resultados sejam um array válido
+            const pollOptions = parseSafeJson(post.poll_options);
+            const validResults = Array.isArray(results) 
+              ? results.map(r => parseFloat(r) || 0)
+              : Array(pollOptions.length).fill(0);
+
+            setPollResults(validResults);
+            setTotalVotes(post.total_votes || 0);
+            setUserVoted(post.user_voted === 1);
+            if (post.user_vote_index !== undefined && post.user_vote_index !== null) {
+              setSelectedPollOption(post.user_vote_index);
+            }
+          } else {
+            // Se não temos os dados, busque do backend
+            const response = await Api.getPollResults(post.id);
+            if (response.success) {
+              const pollOptions = parseSafeJson(post.poll_options);
+              const validResults = Array.isArray(response.pollResults) 
+                ? response.pollResults.map(r => parseFloat(r) || 0)
+                : Array(pollOptions.length).fill(0);
+
+              setPollResults(validResults);
+              setTotalVotes(response.totalVotes);
+              setUserVoted(response.userVoted === 1);
+              if (response.userVoteIndex !== undefined && response.userVoteIndex !== null) {
+                setSelectedPollOption(response.userVoteIndex);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao carregar resultados da enquete:', error);
+          toast.error('Erro ao carregar resultados da enquete');
+        }
+      }
+    };
+
+    loadPollResults();
+  }, [post.id, post.post_type, post.poll_results, post.user_vote_index, post.total_votes, post.user_voted]);
+
   const handlePollVote = async (optionIndex) => {
+    if (isVoting || userVoted) return;
+
     try {
+      setIsVoting(true);
       const response = await Api.voteInPoll(post.id, optionIndex);
+      
       if (response.success) {
-        setSelectedPollOption(optionIndex);
+        // Recarrega os dados do post após o voto
+        const postResponse = await Api.getPollResults(post.id);
+        if (postResponse.success) {
+          const pollOptions = parseSafeJson(post.poll_options);
+          const validResults = Array.isArray(postResponse.pollResults) 
+            ? postResponse.pollResults.map(r => parseFloat(r) || 0)
+            : Array(pollOptions.length).fill(0);
+
+          setSelectedPollOption(optionIndex);
+          setPollResults(validResults);
+          setTotalVotes(postResponse.totalVotes);
+          setUserVoted(true);
+          
+          // Atualizar o post com os novos resultados
+          post.poll_results = JSON.stringify(validResults);
+          post.pollResults = validResults;
+          post.total_votes = postResponse.totalVotes;
+          post.user_voted = 1;
+          post.user_vote_index = optionIndex;
+        } else {
+          toast.error('Erro ao atualizar resultados da enquete');
+        }
+      } else {
+        toast.error(response.message || 'Erro ao votar na enquete');
       }
     } catch (error) {
       console.error('Erro ao votar:', error);
+      toast.error(error.message || 'Erro ao registrar voto');
+    } finally {
+      setIsVoting(false);
     }
   };
 
@@ -302,7 +399,8 @@ const Post = ({ post, onPostDeleted }) => {
 
   const parseSafeJson = (jsonString, defaultValue = []) => {
     try {
-      return jsonString ? JSON.parse(jsonString) : defaultValue;
+      if (!jsonString) return defaultValue;
+      return typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
     } catch (error) {
       console.error('Erro ao fazer parse do JSON:', error);
       return defaultValue;
@@ -364,39 +462,77 @@ const Post = ({ post, onPostDeleted }) => {
   };
 
   const renderPostContent = () => {
-    // Se o post for pago e não estiver desbloqueado, mostra o overlay
     if (post.is_paid && !isUnlocked) {
       return renderPaidContentOverlay();
     }
 
-    // Se o post estiver desbloqueado ou for gratuito, mostra o conteúdo normal
     switch (post.post_type) {
       case 'poll':
-        const pollOptions = parseSafeJson(post.poll_options);
+        const pollOptions = parseSafeJson(post?.poll_options);
+        if (!pollOptions || !Array.isArray(pollOptions) || pollOptions.length === 0) {
+          return (
+            <div className="post-content-wrapper">
+              {renderMedia()}
+            </div>
+          );
+        }
+
+        // Garantir que pollResults seja um array válido do mesmo tamanho que pollOptions
+        const currentPollResults = Array.isArray(pollResults) && pollResults.length === pollOptions.length
+          ? pollResults.map(r => parseFloat(r) || 0)
+          : Array(pollOptions.length).fill(0);
+
         return (
           <div className="post-content-wrapper">
             {renderMedia()}
             <div className="post-poll">
               <h4>Enquete</h4>
-              {pollOptions.map((option, index) => (
-                <button
-                  key={index}
-                  className={`poll-option ${selectedPollOption === index ? 'selected' : ''}`}
-                  onClick={() => handlePollVote(index)}
-                  disabled={selectedPollOption !== null}
-                >
-                  <span className="poll-option-text">{option}</span>
-                  {selectedPollOption !== null && (
-                    <span className="poll-option-percentage">
-                      {post.pollResults?.[index] || 0}%
-                    </span>
+              {pollOptions.map((option, index) => {
+                const percentage = currentPollResults[index];
+                return (
+                  <button
+                    key={index}
+                    className={`poll-option ${selectedPollOption === index ? 'selected' : ''}`}
+                    onClick={() => handlePollVote(index)}
+                    disabled={userVoted}
+                  >
+                    <div className="poll-option-content">
+                      <span className="poll-option-text">{option}</span>
+                      {userVoted && (
+                        <span className="poll-option-percentage">
+                          {percentage.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                    {userVoted && (
+                      <div 
+                        className="poll-option-bar" 
+                        style={{ width: `${percentage}%` }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+              {post.poll_end_date != null ? (
+                <div className="poll-footer">
+                  <p className="poll-end-date">
+                    Encerra em: {new Date(post.poll_end_date).toLocaleDateString()}
+                  </p>
+                  {userVoted && (
+                    <p className="poll-total-votes">
+                      {totalVotes || 0} {totalVotes === 1 ? 'voto' : 'votos'}
+                    </p>
                   )}
-                </button>
-              ))}
-              {post.poll_end_date && (
-                <p className="poll-end-date">
-                  Encerra em: {new Date(post.poll_end_date).toLocaleDateString()}
-                </p>
+                </div>
+              ) : (
+                userVoted && (
+                  <div className="poll-footer">
+                    <p className="poll-end-date">&nbsp;</p>
+                    <p className="poll-total-votes">
+                      {totalVotes || 0} {totalVotes === 1 ? 'voto' : 'votos'}
+                    </p>
+                  </div>
+                )
               )}
             </div>
           </div>

@@ -290,6 +290,57 @@ router.get('/feed/:page/:limit', validateToken, async (req, res) => {
             .input('limit', sql.Int, limit)
             .input('currentDate', sql.DateTime, new Date())
             .query(`
+                WITH PollOptions AS (
+                    SELECT 
+                        p.id as post_id,
+                        options.option_index,
+                        COUNT(DISTINCT v.id) as vote_count,
+                        (SELECT COUNT(*) FROM PollVotes WHERE post_id = p.id) as total_votes
+                    FROM Posts p
+                    CROSS APPLY (
+                        SELECT 
+                            ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 as option_index
+                        FROM OPENJSON(p.poll_options)
+                    ) options
+                    LEFT JOIN PollVotes v ON v.post_id = p.id AND v.option_index = options.option_index
+                    WHERE p.post_type = 'poll'
+                    GROUP BY p.id, options.option_index
+                ),
+                PollResults AS (
+                    SELECT 
+                        post_id,
+                        '[' + STRING_AGG(
+                            CAST(
+                                CAST(
+                                    ROUND(
+                                        CASE 
+                                            WHEN total_votes > 0 THEN CAST(vote_count AS FLOAT) * 100.0 / total_votes
+                                            ELSE 0
+                                        END,
+                                        1
+                                    ) AS DECIMAL(5,1)
+                                ) AS VARCHAR(10)
+                            ),
+                            ','
+                        ) WITHIN GROUP (ORDER BY option_index) + ']' as poll_results,
+                        SUM(vote_count) as total_votes
+                    FROM PollOptions
+                    GROUP BY post_id
+                ),
+                PollData AS (
+                    SELECT 
+                        p.id as post_id,
+                        pv.option_index as user_vote_index,
+                        CASE WHEN pv2.id IS NOT NULL THEN 1 ELSE 0 END as has_voted,
+                        pr.total_votes,
+                        pr.poll_results
+                    FROM Posts p
+                    LEFT JOIN PollVotes pv ON p.id = pv.post_id AND pv.user_id = @userId
+                    LEFT JOIN PollVotes pv2 ON p.id = pv2.post_id AND pv2.user_id = @userId
+                    LEFT JOIN PollResults pr ON p.id = pr.post_id
+                    WHERE p.post_type = 'poll'
+                    GROUP BY p.id, pv.id, pv.option_index, pv2.id, pr.total_votes, pr.poll_results
+                )
                 SELECT 
                     p.*,
                     u.username,
@@ -298,9 +349,14 @@ router.get('/feed/:page/:limit', validateToken, async (req, res) => {
                     (SELECT COUNT(*) FROM Comments WHERE post_id = p.id) as comments_count,
                     (SELECT COUNT(*) FROM Likes WHERE post_id = p.id) as likes_count,
                     (SELECT COUNT(*) FROM Likes WHERE post_id = p.id AND user_id = @userId) as is_liked,
-                    (SELECT COUNT(*) FROM SavedPosts WHERE post_id = p.id AND user_id = @userId) as is_saved
+                    (SELECT COUNT(*) FROM SavedPosts WHERE post_id = p.id AND user_id = @userId) as is_saved,
+                    pd.user_vote_index as user_vote_index,
+                    pd.has_voted as user_voted,
+                    pd.total_votes as total_votes,
+                    pd.poll_results as poll_results
                 FROM Posts p
                 INNER JOIN Users u ON p.user_id = u.id
+                LEFT JOIN PollData pd ON p.id = pd.post_id
                 WHERE (p.scheduled_date IS NULL OR p.scheduled_date <= @currentDate)
                 AND (p.expiration_date IS NULL OR p.expiration_date > @currentDate)
                 AND p.deleted_at IS NULL
@@ -315,7 +371,24 @@ router.get('/feed/:page/:limit', validateToken, async (req, res) => {
                 AND p.deleted_at IS NULL;
             `);
 
-        const posts = result.recordsets[0];
+        const posts = result.recordsets[0].map(post => {
+            if (post.post_type === 'poll' && post.poll_results) {
+                try {
+                    // Garantir que poll_results seja um array
+                    const pollResults = JSON.parse(post.poll_results || '[]');
+                    // Preencher com zeros se necessário
+                    const pollOptions = JSON.parse(post.poll_options || '[]');
+                    post.pollResults = Array(pollOptions.length).fill(0).map((_, i) => 
+                        pollResults[i] || 0
+                    );
+                } catch (e) {
+                    console.error('Erro ao processar resultados da enquete:', e);
+                    post.pollResults = [];
+                }
+            }
+            return post;
+        });
+
         const total = result.recordsets[1][0].total;
 
         res.json({
@@ -369,9 +442,38 @@ router.post('/:postId/vote', validateToken, async (req, res) => {
                 VALUES (@postId, @userId, @optionIndex)
             `);
 
+        // Calcular os resultados atualizados da enquete
+        const results = await pool.request()
+            .input('postId', sql.UniqueIdentifier, postId)
+            .query(`
+                WITH VoteCount AS (
+                    SELECT 
+                        option_index,
+                        COUNT(*) as votes,
+                        (SELECT COUNT(*) FROM PollVotes WHERE post_id = @postId) as total_votes
+                    FROM PollVotes
+                    WHERE post_id = @postId
+                    GROUP BY option_index
+                )
+                SELECT 
+                    option_index,
+                    votes,
+                    CAST(ROUND(CAST(votes AS FLOAT) * 100 / total_votes, 1) AS DECIMAL(5,1)) as percentage
+                FROM VoteCount
+                ORDER BY option_index
+            `);
+
+        // Formatar os resultados em um array
+        const pollResults = Array(4).fill(0); // Assumindo máximo de 4 opções
+        results.recordset.forEach(result => {
+            pollResults[result.option_index] = result.percentage;
+        });
+
         res.json({
             success: true,
-            message: 'Voto registrado com sucesso!'
+            message: 'Voto registrado com sucesso!',
+            pollResults,
+            totalVotes: results.recordset.reduce((acc, curr) => acc + curr.votes, 0)
         });
     } catch (error) {
         console.error('Erro ao votar:', error);
@@ -705,15 +807,65 @@ router.delete('/:postId', validateToken, async (req, res) => {
       return res.status(403).json({ error: 'Você não tem permissão para deletar este post' });
     }
 
-    // Deleta o post (as foreign keys com CASCADE vão deletar comentários e outras relações)
-    await pool.request()
-      .input('postId', sql.UniqueIdentifier, postId)
-      .query('DELETE FROM Posts WHERE id = @postId');
+    // Inicia uma transação para garantir que todas as deleções sejam feitas ou nenhuma
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
 
-    res.json({ message: 'Post deletado com sucesso' });
+    try {
+      // Deleta os likes
+      await transaction.request()
+        .input('postId', sql.UniqueIdentifier, postId)
+        .query('DELETE FROM Likes WHERE post_id = @postId');
+
+      // Deleta os comentários
+      await transaction.request()
+        .input('postId', sql.UniqueIdentifier, postId)
+        .query('DELETE FROM Comments WHERE post_id = @postId');
+
+      // Deleta os votos da enquete
+      await transaction.request()
+        .input('postId', sql.UniqueIdentifier, postId)
+        .query('DELETE FROM PollVotes WHERE post_id = @postId');
+
+      // Deleta as participações em desafios
+      await transaction.request()
+        .input('postId', sql.UniqueIdentifier, postId)
+        .query('DELETE FROM ChallengeParticipations WHERE post_id = @postId');
+
+      // Deleta as respostas do quiz
+      await transaction.request()
+        .input('postId', sql.UniqueIdentifier, postId)
+        .query('DELETE FROM QuizResponses WHERE post_id = @postId');
+
+      // Deleta os posts salvos
+      await transaction.request()
+        .input('postId', sql.UniqueIdentifier, postId)
+        .query('DELETE FROM SavedPosts WHERE post_id = @postId');
+
+      // Por fim, deleta o post
+      await transaction.request()
+        .input('postId', sql.UniqueIdentifier, postId)
+        .query('DELETE FROM Posts WHERE id = @postId');
+
+      // Commit da transação
+      await transaction.commit();
+
+      res.json({ 
+        success: true,
+        message: 'Post e todos os dados relacionados foram deletados com sucesso' 
+      });
+    } catch (err) {
+      // Se houver erro, faz rollback da transação
+      await transaction.rollback();
+      throw err;
+    }
   } catch (error) {
     console.error('Erro ao deletar post:', error);
-    res.status(500).json({ error: 'Erro ao deletar post' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Erro ao deletar post',
+      error: error.message 
+    });
   }
 });
 
@@ -834,6 +986,83 @@ router.post('/:postId/save', validateToken, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Erro ao processar save',
+            error: error.message
+        });
+    }
+});
+
+// Buscar resultados da enquete
+router.get('/:postId/poll-results', validateToken, async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user.id;
+
+    try {
+        const pool = await sql.connect();
+        
+        // Verificar se o post existe e é uma enquete
+        const postCheck = await pool.request()
+            .input('postId', sql.UniqueIdentifier, postId)
+            .query(`
+                SELECT poll_options, poll_end_date 
+                FROM Posts 
+                WHERE id = @postId AND post_type = 'poll' AND deleted_at IS NULL
+            `);
+
+        if (postCheck.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Enquete não encontrada'
+            });
+        }
+
+        // Verificar se o usuário já votou
+        const userVoteCheck = await pool.request()
+            .input('postId', sql.UniqueIdentifier, postId)
+            .input('userId', sql.UniqueIdentifier, userId)
+            .query('SELECT id, option_index FROM PollVotes WHERE post_id = @postId AND user_id = @userId');
+
+        // Calcular os resultados
+        const results = await pool.request()
+            .input('postId', sql.UniqueIdentifier, postId)
+            .query(`
+                WITH VoteCount AS (
+                    SELECT 
+                        option_index,
+                        COUNT(*) as votes,
+                        (SELECT COUNT(*) FROM PollVotes WHERE post_id = @postId) as total_votes
+                    FROM PollVotes
+                    WHERE post_id = @postId
+                    GROUP BY option_index
+                )
+                SELECT 
+                    option_index,
+                    votes,
+                    CAST(ROUND(CAST(votes AS FLOAT) * 100 / NULLIF(total_votes, 0), 1) AS DECIMAL(5,1)) as percentage
+                FROM VoteCount
+                ORDER BY option_index
+            `);
+
+        // Formatar os resultados em um array
+        const pollResults = Array(JSON.parse(postCheck.recordset[0].poll_options).length).fill(0);
+        results.recordset.forEach(result => {
+            pollResults[result.option_index] = result.percentage || 0;
+        });
+
+        const totalVotes = results.recordset.reduce((acc, curr) => acc + curr.votes, 0);
+
+        res.json({
+            success: true,
+            pollResults,
+            totalVotes,
+            userVoted: userVoteCheck.recordset.length > 0,
+            userVoteIndex: userVoteCheck.recordset[0]?.option_index,
+            pollEndDate: postCheck.recordset[0].poll_end_date
+        });
+    } catch (error) {
+        console.error('Erro ao buscar resultados da enquete:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar resultados da enquete',
             error: error.message
         });
     }
