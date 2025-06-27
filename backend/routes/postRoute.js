@@ -97,12 +97,56 @@ router.post('/upload', validateToken, upload.single('file'), async (req, res) =>
 // Servir arquivos de mídia
 router.get('/media/:filename', (req, res) => {
     const { filename } = req.params;
+    
+    // Detecta se é Windows ou Linux
     const isWindows = os.platform() === 'win32';
-    console.log(isWindows);
-    const filePath = isWindows 
-        ? path.join('C:\\', 'upload', filename)
-        : path.join('/etc/easypanel/projects/hot-friends/hotfriends-backend/volumes/upload', filename);
-    res.sendFile(filePath);
+    console.log('Platform:', isWindows ? 'Windows' : 'Linux');
+    
+    // Define o caminho base da pasta de upload
+    const uploadDir = isWindows 
+        ? 'C:\\upload'
+        : '/etc/easypanel/projects/hot-friends/hotfriends-backend/volumes/upload';
+    
+    // Cria o caminho completo do arquivo
+    const filePath = path.join(uploadDir, filename);
+    
+    console.log('Tentando acessar arquivo:', filePath);
+    
+    // Verifica se o arquivo existe antes de tentar servir
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+        if (err) {
+            console.error('Arquivo não encontrado:', filePath);
+            console.error('Erro:', err.message);
+            return res.status(404).json({ 
+                error: 'Arquivo não encontrado',
+                filename: filename,
+                path: filePath 
+            });
+        }
+        
+        // Verifica se é um arquivo (não diretório)
+        fs.stat(filePath, (err, stats) => {
+            if (err) {
+                console.error('Erro ao verificar estatísticas do arquivo:', err);
+                return res.status(500).json({ error: 'Erro interno do servidor' });
+            }
+            
+            if (!stats.isFile()) {
+                console.error('O caminho não é um arquivo:', filePath);
+                return res.status(404).json({ error: 'Arquivo não encontrado' });
+            }
+            
+            // Serve o arquivo
+            res.sendFile(filePath, (err) => {
+                if (err) {
+                    console.error('Erro ao servir arquivo:', err);
+                    if (!res.headersSent) {
+                        res.status(500).json({ error: 'Erro ao servir arquivo' });
+                    }
+                }
+            });
+        });
+    });
 });
 
 // Criar um novo post
