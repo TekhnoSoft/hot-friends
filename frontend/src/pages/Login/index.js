@@ -889,7 +889,7 @@ const Login = () => {
       {/* Modal do Google */}
       {showGoogleModal && googleData && (
         <GoogleModal 
-          show={showGoogleModal} 
+          show={true} 
           onClose={() => {
             console.log('Fechando modal...');
             setShowGoogleModal(false);
