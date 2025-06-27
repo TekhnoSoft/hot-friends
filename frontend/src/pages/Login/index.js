@@ -360,8 +360,8 @@ const Login = () => {
     // Implementar recuperação de senha
   };
 
-  const GoogleModal = ({ show, onClose }) => {
-    console.log('Renderizando modal. Show:', show, 'GoogleData:', googleData);
+  const GoogleModal = ({ isOpen, onClose }) => {
+    console.log('Renderizando modal. Show:', isOpen, 'GoogleData:', googleData);
     
     const [formData, setFormData] = useState({
       username: '',
@@ -429,10 +429,10 @@ const Login = () => {
       }
     };
 
-    if (!show) return null;
+    if (!isOpen) return null;
 
     return (
-      <Modal show={show} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose}>
         <div className="google-modal">
           <h2>
             {googleData?.isNewUser 
@@ -889,7 +889,7 @@ const Login = () => {
       {/* Modal do Google */}
       {showGoogleModal && googleData && (
         <GoogleModal 
-          show={true} 
+          isOpen={true} 
           onClose={() => {
             console.log('Fechando modal...');
             setShowGoogleModal(false);
