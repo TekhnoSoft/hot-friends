@@ -255,43 +255,51 @@ const Login = () => {
 
   const handleGoogleLogin = async (credentialResponse) => {
     try {
-        setIsLoading(true);
-        // Decodifica o token para pegar o email
-        const base64Url = credentialResponse.credential.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        const payload = JSON.parse(jsonPayload);
-        const email = payload.email;
+      setIsLoading(true);
+      setErrors({}); // Limpa erros anteriores
+      
+      // Decodifica o token para pegar o email
+      const base64Url = credentialResponse.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const payload = JSON.parse(jsonPayload);
+      const email = payload.email;
 
-        // Primeiro, verifica o status do email
-        const result = await Api.googleCheck({ 
-            email, 
-            googleToken: credentialResponse.credential 
+      console.log('Iniciando verificação do Google login...');
+
+      // Primeiro, verifica o status do email
+      const result = await Api.googleCheck({ 
+        email, 
+        googleToken: credentialResponse.credential 
+      });
+
+      console.log('Resultado da verificação:', result);
+      
+      if (result.success) {
+        console.log('Login com sucesso, redirecionando...');
+        localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
+        window.location.href = '/';
+      } else if (result.needPassword) {
+        console.log('Necessário criar senha, abrindo modal...');
+        // Usuário precisa criar senha (novo ou existente sem senha)
+        setGoogleData({ 
+          email, 
+          googleToken: credentialResponse.credential,
+          username: result.username, // Vem preenchido se for usuário existente
+          isNewUser: result.isNewUser
         });
-        
-        if (result.success) {
-            // Usuário já existe e tem senha
-            localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
-            window.location.href = '/';
-        } else if (result.needPassword) {
-            // Usuário precisa criar senha (novo ou existente sem senha)
-            setGoogleData({ 
-                email, 
-                googleToken: credentialResponse.credential,
-                username: result.username, // Vem preenchido se for usuário existente
-                isNewUser: result.isNewUser
-            });
-            setShowGoogleModal(true);
-        } else {
-            setErrors({ general: result.message || 'Erro ao logar com Google.' });
-        }
+        setShowGoogleModal(true);
+      } else {
+        console.log('Erro no login:', result.message);
+        setErrors({ general: result.message || 'Erro ao logar com Google.' });
+      }
     } catch (err) {
-        console.error('Erro no login com Google:', err);
-        setErrors({ general: 'Erro ao processar login com Google.' });
+      console.error('Erro no login com Google:', err);
+      setErrors({ general: 'Erro ao processar login com Google.' });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -353,132 +361,135 @@ const Login = () => {
   };
 
   const GoogleModal = ({ show, onClose }) => {
+    console.log('Renderizando modal. Show:', show, 'GoogleData:', googleData);
+    
     const [formData, setFormData] = useState({
-        username: '',
-        password: '',
-        confirmPassword: ''
+      username: '',
+      password: '',
+      confirmPassword: ''
     });
     const [modalErrors, setModalErrors] = useState({});
 
     useEffect(() => {
-        if (googleData?.username) {
-            setFormData(prev => ({ ...prev, username: googleData.username }));
-        }
+      if (googleData?.username) {
+        console.log('Atualizando username no form:', googleData.username);
+        setFormData(prev => ({ ...prev, username: googleData.username }));
+      }
     }, [googleData]);
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-        setModalErrors({});
+      setFormData({
+        ...formData,
+        [e.target.name]: e.target.value
+      });
+      setModalErrors({});
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setModalErrors({});
+      e.preventDefault();
+      setIsLoading(true);
+      setModalErrors({});
 
-        try {
-            // Validações
-            if (formData.password !== formData.confirmPassword) {
-                setModalErrors({ general: 'As senhas não coincidem.' });
-                return;
-            }
-
-            if (formData.password.length < 6) {
-                setModalErrors({ general: 'A senha deve ter pelo menos 6 caracteres.' });
-                return;
-            }
-
-            if (googleData?.isNewUser && (!formData.username || formData.username.length < 3)) {
-                setModalErrors({ general: 'O nome de usuário deve ter pelo menos 3 caracteres.' });
-                return;
-            }
-
-            // Envia dados para completar o cadastro/login
-            const result = await Api.googleComplete({
-                email: googleData.email,
-                googleToken: googleData.googleToken,
-                username: googleData.username || formData.username,
-                password: formData.password
-            });
-
-            if (result.success) {
-                localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
-                window.location.href = '/';
-            } else {
-                setModalErrors({ general: result.message || 'Erro ao completar o cadastro.' });
-            }
-        } catch (err) {
-            console.error('Erro ao completar cadastro:', err);
-            setModalErrors({ general: 'Erro ao processar o cadastro.' });
-        } finally {
-            setIsLoading(false);
+      try {
+        // Validações
+        if (formData.password !== formData.confirmPassword) {
+          setModalErrors({ general: 'As senhas não coincidem.' });
+          return;
         }
+
+        if (formData.password.length < 6) {
+          setModalErrors({ general: 'A senha deve ter pelo menos 6 caracteres.' });
+          return;
+        }
+
+        if (googleData?.isNewUser && (!formData.username || formData.username.length < 3)) {
+          setModalErrors({ general: 'O nome de usuário deve ter pelo menos 3 caracteres.' });
+          return;
+        }
+
+        // Envia dados para completar o cadastro/login
+        const result = await Api.googleComplete({
+          email: googleData.email,
+          googleToken: googleData.googleToken,
+          username: googleData.username || formData.username,
+          password: formData.password
+        });
+
+        if (result.success) {
+          localStorage.setItem('HOTFRIENDS_ACCESS_TOKEN', result.token);
+          window.location.href = '/';
+        } else {
+          setModalErrors({ general: result.message || 'Erro ao completar o cadastro.' });
+        }
+      } catch (err) {
+        console.error('Erro ao completar cadastro:', err);
+        setModalErrors({ general: 'Erro ao processar o cadastro.' });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     if (!show) return null;
 
     return (
-        <Modal show={show} onClose={onClose}>
-            <div className="google-modal">
-                <h2>
-                    {googleData?.isNewUser 
-                        ? 'Completar Cadastro' 
-                        : 'Criar Senha'}
-                </h2>
-                <form onSubmit={handleSubmit}>
-                    {googleData?.isNewUser && (
-                        <div className="form-group">
-                            <label>Nome de usuário</label>
-                            <input
-                                type="text"
-                                name="username"
-                                value={formData.username}
-                                onChange={handleChange}
-                                required
-                                minLength={3}
-                                placeholder="Escolha um nome de usuário"
-                                disabled={isLoading}
-                            />
-                        </div>
-                    )}
-                    <div className="form-group">
-                        <label>Senha</label>
-                        <input
-                            type="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                            minLength={6}
-                            placeholder="Digite sua senha"
-                            disabled={isLoading}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>Confirmar Senha</label>
-                        <input
-                            type="password"
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            required
-                            minLength={6}
-                            placeholder="Confirme sua senha"
-                            disabled={isLoading}
-                        />
-                    </div>
-                    {modalErrors.general && (
-                        <div className="error-message">{modalErrors.general}</div>
-                    )}
-                    <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                        {isLoading ? 'Processando...' : (googleData?.isNewUser ? 'Completar Cadastro' : 'Criar Senha')}
-                    </button>
-                </form>
+      <Modal show={show} onClose={onClose}>
+        <div className="google-modal">
+          <h2>
+            {googleData?.isNewUser 
+              ? 'Completar Cadastro' 
+              : 'Criar Senha'}
+          </h2>
+          <form onSubmit={handleSubmit}>
+            {googleData?.isNewUser && (
+              <div className="form-group">
+                <label>Nome de usuário</label>
+                <input
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  minLength={3}
+                  placeholder="Escolha um nome de usuário"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+            <div className="form-group">
+              <label>Senha</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={6}
+                placeholder="Digite sua senha"
+                disabled={isLoading}
+              />
             </div>
-        </Modal>
+            <div className="form-group">
+              <label>Confirmar Senha</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                minLength={6}
+                placeholder="Confirme sua senha"
+                disabled={isLoading}
+              />
+            </div>
+            {modalErrors.general && (
+              <div className="error-message">{modalErrors.general}</div>
+            )}
+            <button type="submit" className="btn btn-primary" disabled={isLoading}>
+              {isLoading ? 'Processando...' : (googleData?.isNewUser ? 'Completar Cadastro' : 'Criar Senha')}
+            </button>
+          </form>
+        </div>
+      </Modal>
     );
   };
 
@@ -546,7 +557,10 @@ const Login = () => {
             <div className="loginpage-social-login">
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
-                onError={() => setErrors({ general: 'Erro ao autenticar com Google.' })}
+                onError={() => {
+                  console.log('Login Failed');
+                  setErrors({ general: 'Erro ao fazer login com Google.' });
+                }}
                 useOneTap
               />
             </div>
@@ -873,14 +887,17 @@ const Login = () => {
       </footer>
 
       {/* Modal do Google */}
-      <GoogleModal 
-        show={showGoogleModal} 
-        onClose={() => {
-          setShowGoogleModal(false);
-          setGoogleData(null);
-          setErrors({});
-        }} 
-      />
+      {showGoogleModal && googleData && (
+        <GoogleModal 
+          show={showGoogleModal} 
+          onClose={() => {
+            console.log('Fechando modal...');
+            setShowGoogleModal(false);
+            setGoogleData(null);
+            setErrors({});
+          }} 
+        />
+      )}
     </div>
   );
 };
