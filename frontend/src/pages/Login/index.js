@@ -853,7 +853,7 @@ const Login = () => {
           </div>
           <div className="loginpage-company">
             <strong>QMS520 TECHNOLOGY INTERNATIONAL</strong>
-            <p>Aida Avenue, Estoril Garden, Bloco 1, Room 112, Estoril, Cascais, Lisboa</p>
+            <p>V 1.0.0</p>
           </div>
         </div>
       </footer>
