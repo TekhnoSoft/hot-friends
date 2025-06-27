@@ -28,6 +28,7 @@ import PaymentModal from '../PaymentModal';
 import Api from '../../Api';
 import { MainContext } from '../../helpers/MainContext';
 import './style.css';
+import Environment from '../../Environment';
 
 const Post = ({ post, onPostDeleted }) => {
   const { user } = useContext(MainContext);
@@ -260,14 +261,14 @@ const Post = ({ post, onPostDeleted }) => {
           <div className="preview-media">
             {post.preview_media_type === 'image' && (
               <img
-                src={`http://localhost:3001/posts/media/${post.preview_media_url}`}
+                src={`${Environment.API_BASE}/posts/media/${post.preview_media_url}`}
                 alt="Preview"
                 className="post-image blur-preview"
               />
             )}
             {post.preview_media_type === 'video' && (
               <video
-                src={`http://localhost:3001/posts/media/${post.preview_media_url}`}
+                src={`${Environment.API_BASE}/posts/media/${post.preview_media_url}`}
                 className="post-video blur-preview"
                 muted
                 loop
@@ -315,7 +316,7 @@ const Post = ({ post, onPostDeleted }) => {
       case 'image':
         return (
           <img
-            src={`http://localhost:3001/posts/media/${post.media_url}`}
+            src={`${Environment.API_BASE}/posts/media/${post.media_url}`}
             alt="Post content"
             className="post-image"
           />
@@ -326,7 +327,7 @@ const Post = ({ post, onPostDeleted }) => {
           <div className="post-video-container">
             <video
               ref={videoRef}
-              src={`http://localhost:3001/posts/media/${post.media_url}`}
+              src={`${Environment.API_BASE}/posts/media/${post.media_url}`}
               className="post-video"
               controls={isPlaying}
               muted
@@ -350,7 +351,7 @@ const Post = ({ post, onPostDeleted }) => {
           <div className="post-audio-container">
             <audio
               ref={audioRef}
-              src={`http://localhost:3001/posts/media/${post.media_url}`}
+              src={`${Environment.API_BASE}/posts/media/${post.media_url}`}
               controls
               className="post-audio"
             />
