@@ -109,6 +109,7 @@ const MyProfile = () => {
 
   const handleSaveProfile = async () => {
     try {
+      console.log(formData);
       const response = await Api.updateProfile(formData);
       if (response.success) {
         setShowEditModal(false);
@@ -176,7 +177,7 @@ const MyProfile = () => {
       {/* Cover Image */}
       <div className="myprofile-cover">
         <img 
-          src={Api.getImageUrl(user.coverImage) || 'https://picsum.photos/800/300?random=cover'} 
+          src={Api.getImageUrlProfile(user.coverImage, 'cover') || 'https://picsum.photos/800/300?random=cover'} 
           alt="Cover" 
           className="myprofile-cover-image"
         />
@@ -187,7 +188,7 @@ const MyProfile = () => {
         <div className="myprofile-avatar-section">
           <div className="myprofile-avatar-container">
             <img 
-              src={Api.getImageUrl(user.avatar) || 'https://picsum.photos/120/120?random=avatar'} 
+              src={Api.getImageUrlProfile(user.avatar, 'avatar') || 'https://picsum.photos/120/120?random=avatar'} 
               alt={user.name}
               className="myprofile-avatar"
             />
@@ -325,7 +326,7 @@ const MyProfile = () => {
               <img 
                 src={formData.coverImage && formData.coverImage.startsWith('data:') 
                   ? formData.coverImage 
-                  : Api.getImageUrl(formData.coverImage) || 'https://picsum.photos/800/300?random=cover'} 
+                  : Api.getImageUrlProfile(formData.coverImage, 'cover') || 'https://picsum.photos/800/300?random=cover'} 
                 alt="Cover" 
               />
               <label htmlFor="cover-upload" className="myprofile-upload-btn">
@@ -345,7 +346,7 @@ const MyProfile = () => {
               <img 
                 src={formData.avatar && formData.avatar.startsWith('data:') 
                   ? formData.avatar 
-                  : Api.getImageUrl(formData.avatar) || 'https://picsum.photos/120/120?random=avatar'} 
+                  : Api.getImageUrlProfile(formData.avatar, 'avatar') || 'https://picsum.photos/120/120?random=avatar'} 
                 alt={formData.name}
               />
               <label htmlFor="avatar-upload" className="myprofile-upload-btn">

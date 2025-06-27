@@ -33,6 +33,18 @@ const Api = {
         // Caso contrário, constrói a URL para a API
         return `${API_BASE}/users/image/${filename}`;
     },
+    getImageUrlProfile: (filename, type) => {
+        if (!filename) return null;
+        // Se já for uma URL completa, retorna ela mesma
+        if (filename.startsWith('http://') || filename.startsWith('https://')) {
+            return filename;
+        }
+        // Se for base64, retorna o próprio base64
+        if (filename.startsWith('data:')) {
+            return filename;
+        }
+        return `${API_BASE}/users/image/${type}/${filename}`;
+    },
     auth: async () => {
         try {
             const response = await axios.get(`${API_BASE}/users/auth`, Environment.HEADERS);
@@ -102,7 +114,7 @@ const Api = {
                 const avatarFile = await dataURLtoFile(data.avatar, 'avatar.jpg');
                 const avatarResponse = await Api.uploadMedia(avatarFile, 'avatar');
                 if (avatarResponse.success) {
-                    profileData.avatar = avatarResponse.filename; // Salva apenas o nome do arquivo
+                    profileData.avatar = "avatar/"+avatarResponse.filename; // Salva apenas o nome do arquivo
                 }
             }
 
@@ -111,7 +123,7 @@ const Api = {
                 const coverFile = await dataURLtoFile(data.coverImage, 'cover.jpg');
                 const coverResponse = await Api.uploadMedia(coverFile, 'cover');
                 if (coverResponse.success) {
-                    profileData.coverImage = coverResponse.filename; // Salva apenas o nome do arquivo
+                    profileData.coverImage = "cover/"+coverResponse.filename; // Salva apenas o nome do arquivo
                 }
             }
 
@@ -122,6 +134,8 @@ const Api = {
             if (profileData.coverImage && profileData.coverImage.startsWith('data:')) {
                 delete profileData.coverImage;
             }
+
+            console.log(profileData);
 
             const response = await axios.put(`${API_BASE}/users/update`, profileData, Environment.HEADERS);
             
