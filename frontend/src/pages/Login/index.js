@@ -369,6 +369,8 @@ const Login = () => {
       confirmPassword: ''
     });
     const [modalErrors, setModalErrors] = useState({});
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
       if (googleData?.username) {
