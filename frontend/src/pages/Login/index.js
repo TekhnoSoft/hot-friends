@@ -434,12 +434,9 @@ const Login = () => {
     if (!isOpen) return null;
 
     return (
-      <Modal isOpen={true} onClose={onClose}>
+      <Modal isOpen={true} onClose={onClose} title="Completar Cadastro">
         <div className="google-modal">
           <div className="loginpage-form-header">
-            <h2>
-              Completar Cadastro
-            </h2>
             <p>
               {googleData?.isNewUser 
                 ? 'Complete seu cadastro para continuar' 
